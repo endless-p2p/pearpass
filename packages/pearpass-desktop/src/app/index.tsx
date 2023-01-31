@@ -18,7 +18,7 @@ function App() {
 
   if (!accounts) return <AddAccount />
 
-  const entries = entryStore.all.map((entry) => <li>{entry.name}</li>)
+  const entries = entryStore.all.map((entry) => <li key={entry.guid}>{entry.name}</li>)
 
   return (
     <div>
