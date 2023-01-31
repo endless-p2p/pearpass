@@ -21,7 +21,7 @@ export const EntryStoreModel = types
           password: 'soup-er-secure',
         },
         {
-          guid: uuid(),\
+          guid: uuid(),
           name: 'Coinbase',
           password: '!urKeys=!urCoins',
         },
