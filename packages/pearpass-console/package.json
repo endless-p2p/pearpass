@@ -8,15 +8,22 @@
   },
   "scripts": {
     "build": "tsc && chmod +x dist/cli.js",
-    "start": "npm run build && dist/cli.js",
-    "pretest": "npm run build",
+    "start": "yarn build && dist/cli.js",
+    "pretest": "yarn build",
     "test": "xo && ava"
   },
   "files": [
     "dist/cli.js"
   ],
   "dependencies": {
+    "b4a": "^1.6.1",
+    "corestore": "^6.4.2",
+    "graceful-goodbye": "^1.2.0",
+    "hyperbee": "^2.4.2",
+    "hyperswarm": "^4.3.7",
     "ink": "^3.2.0",
+    "ink-big-text": "^1.2.0",
+    "ink-form": "^1.0.2",
     "meow": "^9.0.0",
     "react": "^17.0.2"
   },
@@ -39,6 +46,7 @@
   "devDependencies": {
     "@ava/typescript": "^3.0.1",
     "@sindresorhus/tsconfig": "^3.0.1",
+    "@types/b4a": "^1.6.0",
     "@types/react": "^18.0.27",
     "ava": "^5.1.1",
     "chalk": "^4.1.2",
