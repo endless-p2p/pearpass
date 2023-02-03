@@ -2,10 +2,12 @@
 import React from 'react'
 import { render } from 'ink'
 import meow from 'meow'
-import App from './ui'
+import App from './App'
+import Vault from './vault'
+import { VaultProvider } from './hooks/useVault'
 
 const cli = meow(
-	`
+  `
 	Usage
 	  $ pearpass-console
 
@@ -16,21 +18,26 @@ const cli = meow(
 	  $ pearpass-console --name=Jane
 	  Hello, Jane
 `,
-	{
-		flags: {
-			name: {
-				type: 'string',
-			},
-		},
-	},
+  {
+    flags: {
+      name: {
+        type: 'string',
+      },
+      discoveryKey: {
+        type: 'string',
+      },
+    },
+  },
 )
 
-const { waitUntilExit } = render(<App name={cli.flags.name} />)
+const {
+  flags: { name, discoveryKey },
+} = cli
 
-const endless = async () => {
-	setInterval(async () => {
-		await waitUntilExit()
-	}, 500)
-}
+const vault = new Vault({ name, discoveryKey })
 
-endless()
+const { waitUntilExit } = render(
+  <VaultProvider vault={vault}>
+    <App name={name} />
+  </VaultProvider>,
+)
