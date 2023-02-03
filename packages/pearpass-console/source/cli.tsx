@@ -23,7 +23,7 @@ const cli = meow(
       name: {
         type: 'string',
       },
-      discoveryKey: {
+      topic: {
         type: 'string',
       },
     },
@@ -31,10 +31,10 @@ const cli = meow(
 )
 
 const {
-  flags: { name, discoveryKey },
+  flags: { name, topic },
 } = cli
 
-const vault = new Vault({ name, discoveryKey })
+const vault = new Vault({ name, topic })
 
 const { waitUntilExit } = render(
   <VaultProvider vault={vault}>
