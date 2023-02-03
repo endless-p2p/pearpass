@@ -2,7 +2,6 @@ import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
 import Hypercore from 'hypercore'
 import Hyperbee from 'hyperbee'
-import goodbye from 'graceful-goodbye'
 import b4a from 'b4a'
 
 interface Props {
@@ -14,129 +13,130 @@ class Vault {
   public db: Record<string, unknown>
   public name: string
   public log: string[]
+  private _topicBuffer: Uint8Array | Buffer
+  private _topicHex: string
   private _corestore: Hyperbee
   private _swarm: Hyperswarm
   private _localCore: Hypercore
   private _localBee: Hyperbee
+  private _remoteConnections: any[]
   private _remoteCores: Hypercore[]
   private _remoteBees: Hyperbee[]
+  private _setStats: React.Dispatch<any>
 
-  constructor({ name, discoveryKey }: Props) {
+  constructor({
+    name,
+    topic = '5f6101b77326a81705d662ad445f8ea6146ade0a553c31ef8d4d51fff7ca891c',
+  }) {
     this.name = name
+
+    this._topicBuffer = b4a.from(topic, 'hex') //generate a topic using crypto.randomBytes(32)
+    this._topicHex = topic
 
     this.db = {}
     this.log = []
 
+    this._remoteConnections = []
     this._remoteCores = []
     this._remoteBees = []
 
-    // Corestore is a Hypercore factory
-    // create a corestore instance with the given location
     this._corestore = new Corestore(this.storage())
 
-    // Hyperswarm allows you to find and connect to peers announcing a common 'topic'
     this._swarm = new Hyperswarm()
-    goodbye(() => this._swarm.destroy())
-
-    // Emitted whenever the swarm connects to a new peer
-    // Replication of the corestore instance on connection with other peers
-    this._swarm.on('connection', (conn) => {
-      this.log.push('connection!')
-
-      const name = b4a.toString(conn.remotePublicKey, 'hex')
-      this.log.push('* got a connection from:', name, '*')
-      return this._corestore.replicate(conn)
+    this._swarm.on('connection', (connection) => {
+      this._processNewConnection(connection)
+      return this._corestore.replicate(connection)
     })
 
-    // Hypercore is a secure, distributed append-only log built for sharing large datasets and streams of real-time data.
-    // Loads a Hypercore, either by name (if the name option is provided),
-    // or from the provided key (if the first argument is a Buffer, or if the key option is set).
     this._localCore = this._corestore.get({ name })
-    if (discoveryKey) {
-      this._remoteCores[0] = this._corestore.get({ key: b4a.from(discoveryKey, 'hex') })
-    }
   }
 
-  public async initialize() {
+  public async initialize({ setStats }) {
+    this._setStats = setStats
+
     await this._localCore.ready()
     this.log.push('localCore ready')
-    if (this._remoteCores[0]) {
-      await this._remoteCores[0].ready()
-      this.log.push('remoteCore ready')
-    }
 
-    // flush() will wait until *all* discoverable peers have been connected to
-    // It might take a while, so don't await it
-    // Instead, use core.findingPeers() to mark when the discovery process is completed
     const foundPeers = this._corestore.findingPeers()
-    this._swarm.join(this._localCore.discoveryKey)
-    if (this._remoteCores[0]) this._swarm.join(this._remoteCores[0].discoveryKey)
+    this._swarm.join(this._topicBuffer)
     this._swarm.flush().then(() => foundPeers())
 
-    // Wait for the core to try and find a signed update to its length
-    // Does not download any data from peers except for proof of the new core length
-    await this._localCore.update()
-    this.log.push('localCore updated')
-
-    if (this._remoteCores[0]) {
-      await this._remoteCores[0].update()
-      this.log.push('remoteCore updated')
-    }
-
-    // console.log({
-    //   // core: this.localCore,
-    //   // coreKey: this.localCore.key,
-    //   // coreKeyPair: this.localCore.keyPair,
-    //   // coreDiscoveryKey: this.localCore.discoveryKey,
-    //   localCoreHexDiscoveryKey: b4a.toString(this.localCore.key, 'hex'),
-    //   remoteCoreHexDiscoveryKey: b4a.toString(this.remoteCores[0].key, 'hex'),
-    // })
-
-    // Hyperbee is an append-only B-tree based on Hypercore
     this._localBee = new Hyperbee(this._localCore, {
       keyEncoding: 'utf-8',
       valueEncoding: 'utf-8',
     })
 
-    if (this._remoteCores[0]) {
-      this._remoteBees[0] = new Hyperbee(this._remoteCores[0], {
-        keyEncoding: 'utf-8',
-        valueEncoding: 'utf-8',
-      })
-    }
+    this._localCore.on('append', () => {
+      this._processReadStream(this.name, this._localBee.createReadStream())
+    })
   }
 
   private storage() {
     return `./temp/${this.name}`
   }
 
-  public waitForUpdate(setStats) {
-    let localBeeVersion = 0
-    let remoteBeeVersion = 0
-    const intervalId = setInterval(async () => {
-      if (
-        this._localBee.version > localBeeVersion ||
-        this._remoteBees[0].version > remoteBeeVersion
-      ) {
-        localBeeVersion = this._localBee.version
-        remoteBeeVersion = this._remoteBees[0].version
+  private async _processReadStream(name, stream) {
+    const namedDb = {}
+    for await (const { key, value } of stream) {
+      this.db[key] = value
+      namedDb[key] = value
+    }
 
-        await this.logReadStream()
-
-        setStats({ localBeeVersion, remoteBeeVersion, db: this.db })
-      }
-    }, 500)
-
-    return intervalId
+    this._setStats((stats) => {
+      stats[name] = namedDb
+      stats.db = this.db
+      return stats
+    })
   }
 
-  private async logReadStream() {
-    for await (const { key, value } of this._remoteBees[0].createReadStream()) {
-      this.db[key] = value
+  private _processNewConnection(conn) {
+    console.log('* new connection from:', b4a.toString(conn.remotePublicKey, 'hex'), '*')
+
+    this._remoteConnections.push(conn)
+    conn.once('close', () =>
+      this._remoteConnections.splice(this._remoteConnections.indexOf(conn), 1),
+    )
+    conn.on('data', (data) => {
+      this._processConnectionMessage(data)
+    })
+
+    // send local hypercore discovery key
+    conn.write(JSON.stringify({ remoteHypercoreKey: b4a.toString(this._localCore.key, 'hex') }))
+  }
+
+  private async _processConnectionMessage(data) {
+    // TODO: authorize peer here
+
+    if (!this._isJsonString(data)) return
+    let json = JSON.parse(data)
+    if (!json.remoteHypercoreKey) return
+
+    let remoteHypercore = this._corestore.get({ key: b4a.from(json.remoteHypercoreKey, 'hex') })
+    await remoteHypercore.ready()
+
+    this._swarm.join(remoteHypercore.discoveryKey)
+    await remoteHypercore.update()
+
+    const remoteHyperbee = new Hyperbee(remoteHypercore, {
+      keyEncoding: 'utf-8',
+      valueEncoding: 'utf-8',
+    })
+
+    this._remoteCores.push(remoteHypercore)
+    this._remoteBees.push(remoteHyperbee)
+
+    remoteHypercore.on('append', () => {
+      this._processReadStream('remote', remoteHyperbee.createReadStream())
+    })
+  }
+
+  private _isJsonString(str) {
+    try {
+      JSON.parse(str)
+    } catch (e) {
+      return false
     }
-    for await (const { key, value } of this._localBee.createReadStream()) {
-      this.db[key] = value
-    }
+    return true
   }
 
   public async put(key, value) {

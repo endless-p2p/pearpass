@@ -20,7 +20,7 @@ const App = ({ name = 'Stranger' }) => {
           <Box height={4}>
             <EntryForm insertMode={insertMode} setInsertMode={setInsertMode} />
           </Box>
-          <Text>{JSON.stringify(stats.db)}</Text>
+          <Text>{JSON.stringify(stats)}</Text>
         </Box>
         <Box flexDirection="column" borderStyle="round" width={50} height={20} paddingX={1}>
           <Box>

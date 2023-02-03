@@ -12,11 +12,12 @@ export function VaultProvider({ children, vault }: Props) {
 
   React.useEffect(() => {
     let intervalId
+
     const initialize = async () => {
       console.log('initializing...')
-      await vault.initialize()
+      await vault.initialize({ setStats })
       console.log('ready...')
-      intervalId = vault.waitForUpdate(setStats)
+      // intervalId = vault.waitForUpdate(setStats)
     }
     initialize()
 
