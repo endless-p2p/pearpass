@@ -8,7 +8,7 @@
       "path": "./packages/pearpass-desktop"
     },
     {
-      "path": "./packages/vault"
+      "path": "./packages/@endless-p2p/vault"
     }
   ]
 }
