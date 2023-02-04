@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "composite": true,
     "target": "ES6",
     "allowJs": true,
     "module": "commonjs",
@@ -11,10 +12,7 @@
     "outDir": "dist",
     "moduleResolution": "node",
     "resolveJsonModule": true,
-    "jsx": "react",
-    "paths": {
-      "*": ["node_modules/*"]
-    }
+    "jsx": "react"
   },
   "include": ["src/**/*"]
 }

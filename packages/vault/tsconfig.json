@@ -11,10 +11,5 @@
     "skipLibCheck": true,
     "noImplicitAny": false
   },
-  "include": ["src/**/*"],
-  "references": [
-    {
-      "path": "../vault"
-    }
-  ]
+  "include": ["src/**/*"]
 }
