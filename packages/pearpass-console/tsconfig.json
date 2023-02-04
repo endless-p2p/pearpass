@@ -14,7 +14,7 @@
   "include": ["src/**/*"],
   "references": [
     {
-      "path": "../vault"
+      "path": "../@endless-p2p/vault"
     }
   ]
 }

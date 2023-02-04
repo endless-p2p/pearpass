@@ -2,8 +2,8 @@
 import React from 'react'
 import { render } from 'ink'
 import meow from 'meow'
+import Vault from '@endless-p2p/vault'
 import App from './App'
-import Vault from '../../vault/src'
 import { VaultProvider } from './hooks/useVault'
 
 const cli = meow(
