@@ -22208,6 +22208,8 @@ __metadata:
 "pearpass@workspace:.":
   version: 0.0.0-use.local
   resolution: "pearpass@workspace:."
+  dependencies:
+    prettier: ^2.8.3
   languageName: unknown
   linkType: soft
 

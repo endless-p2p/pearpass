@@ -67,11 +67,5 @@
   },
   "resolutions": {
     "udx-native": "github:holepunchto/libudx.git"
-  },
-  "prettier": {
-    "printWidth": 100,
-    "semi": false,
-    "singleQuote": true,
-    "trailingComma": "all"
   }
 }

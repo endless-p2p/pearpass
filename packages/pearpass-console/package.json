@@ -54,11 +54,5 @@
     "ink-testing-library": "^2.1.0",
     "typescript": "^4.9.5",
     "xo": "^0.39.1"
-  },
-  "prettier": {
-    "printWidth": 100,
-    "semi": false,
-    "singleQuote": true,
-    "trailingComma": "all"
   }
 }
