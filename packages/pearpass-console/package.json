@@ -3,19 +3,19 @@
   "version": "0.1.0",
   "packageManager": "yarn@3.4.1",
   "license": "MIT",
-  "bin": "dist/cli.js",
+  "bin": "dist/src/cli.js",
   "engines": {
     "node": ">=10"
   },
   "scripts": {
     "prebuild": "yarn build:libs",
-    "build": "yarn prebuild && tsc && chmod +x dist/cli.js",
-    "start": "yarn build && dist/cli.js",
+    "build": "yarn prebuild && tsc && chmod +x dist/src/cli.js",
+    "start": "yarn build && dist/src/cli.js",
     "pretest": "yarn build",
     "test": "xo && ava"
   },
   "files": [
-    "dist/cli.js"
+    "dist/src/cli.js"
   ],
   "dependencies": {
     "@endless-p2p/vault": "0.1.0",

@@ -10,6 +10,7 @@ class Peer {
   private _connection
   private _identityBee: Hyperbee
   private _entryBee: Hyperbee
+  private _entryCoreDiscoveryKey: string
 
   constructor({ vault, connection }) {
     this._vault = vault
@@ -33,12 +34,19 @@ class Peer {
     this._connection.write(JSON.stringify(message))
   }
 
+  get identityBee() {
+    return this._identityBee
+  }
+
+  get entryBee() {
+    return this._entryBee
+  }
+
   private async _processConnectionMessage(data) {
     let message
     try {
       message = JSON.parse(data)
     } catch (error) {
-      console.log({ error })
       return
     }
 
@@ -46,20 +54,47 @@ class Peer {
 
     if (!identityCoreDiscoveryKey) return
 
-    const core = this._vault.getCoreFromKey(identityCoreDiscoveryKey)
-    await core.ready()
-
-    this._vault.addCoreToSwarm(core)
-    await core.update()
+    const core = await this._vault.initializeCoreFromKey(identityCoreDiscoveryKey)
 
     this._identityBee = new Hyperbee(core, {
       keyEncoding: 'utf-8',
       valueEncoding: 'utf-8',
     })
 
-    // this._entryBee.core.on('append', () => {
-    //   this._processReadStream('remote', remoteHyperbee.createReadStream())
-    // })
+    this._identityBee.core.on('append', () => {
+      console.log('got identityCore append 1')
+      this._vault.onPeerAppend(this)
+    })
+
+    this._identityBee.core.on('append', () => {
+      console.log('got identityCore append 2')
+      this._onIdentityCoreAppend()
+    })
+    this._onIdentityCoreAppend()
+  }
+
+  private async _onIdentityCoreAppend() {
+    if (this._entryCoreDiscoveryKey) return
+
+    const entryCoreDiscoveryKey = await this._identityBee.get('entryCoreDiscoveryKey')
+    this._vault.onPeerAppend(this)
+
+    if (!entryCoreDiscoveryKey) return
+
+    this._entryCoreDiscoveryKey = entryCoreDiscoveryKey.value
+
+    const core = await this._vault.initializeCoreFromKey(this._entryCoreDiscoveryKey)
+    this._entryBee = new Hyperbee(core, {
+      keyEncoding: 'utf-8',
+      valueEncoding: 'utf-8',
+    })
+
+    this._entryBee.core.on('append', () => {
+      this._vault.onPeerAppend(this)
+    })
+
+    await this._entryBee.core.ready()
+    this._vault.onPeerAppend(this)
   }
 
   private _authorize() {

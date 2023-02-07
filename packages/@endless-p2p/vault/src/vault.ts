@@ -11,8 +11,8 @@ interface Props {
 }
 
 class Vault {
-  public db: Record<string, unknown>
   public name: string
+  private _stats: Record<string, unknown>
   private _log: string[]
   private _corestore: Corestore
   private _identityBee: Hyperbee
@@ -32,11 +32,11 @@ class Vault {
     this._topicBuffer = b4a.from(topic, 'hex') //generate a topic using crypto.randomBytes(32)
     this._topicHex = topic
 
-    this.db = {}
+    this._stats = {}
     this._log = []
     this._peers = []
 
-    this._corestore = new Corestore(this.storage())
+    this._corestore = new Corestore(this._storage())
 
     this._swarm = new Hyperswarm()
     this._swarm.on('connection', (connection) => new Peer({ connection, vault: this }))
@@ -57,32 +57,33 @@ class Vault {
 
     this._identityBee.core.ready().then(() => {
       this._addLog('identityBee core ready')
-      this._swarm.join(this._identityBee.core.discoveryKey)
+
+      this.addCoreToSwarm(this._identityBee.core)
 
       this._identityBee.core.on('append', () => {
-        this._handleAppend(this._identityBee, this._entryBee)
+        this._handleAppend(this._identityBee, this._entryBee, true)
       })
     })
 
     this._entryBee.core.ready().then(() => {
       this._addLog('entryBee core ready')
-      this._swarm.join(this._entryBee.core.discoveryKey)
+
+      this.addCoreToSwarm(this._entryBee.core)
+
+      this._entryBee.core.update().then(() => {
+        console.log('local _entryBee.core.update()')
+      })
 
       this._entryBee.core.on('append', () => {
-        this._handleAppend(this._identityBee, this._entryBee)
+        console.log('local _entryBee appended')
+        this._handleAppend(this._identityBee, this._entryBee, true)
       })
+
+      const discoveryKey = b4a.toString(this._entryBee.core.key, 'hex')
+      this._identityBee.put('entryCoreDiscoveryKey', discoveryKey)
+      this._identityBee.put('name', this.name)
     })
   }
-
-  // const db = new Hyperbee(new Hypercore('./db'))
-  // const swarm = new Hyperswarm()
-
-  // swarm.on('connection', c => db.feed.replicate(c))
-
-  // db.feed.ready().then(function () {
-  //   console.log('Feed key: ' + db.feed.key.toString('hex'))
-  //   swarm.join(db.feed.discoveryKey)
-  // })
 
   async initialize({ setStats }) {
     this._setStats = setStats
@@ -92,7 +93,7 @@ class Vault {
     this._peers.push(peer)
     this._corestore.replicate(peer.connection())
     peer.sendMessage({
-      identityCoreDiscoveryKey: b4a.toString(this._identityBee.core.discoveryKey, 'hex'),
+      identityCoreDiscoveryKey: b4a.toString(this._identityBee.core.key, 'hex'),
     })
   }
 
@@ -100,14 +101,21 @@ class Vault {
     this._peers.splice(this._peers.indexOf(peer), 1)
   }
 
-  getCoreFromKey(key) {
-    return this._corestore.get({
-      key: b4a.from(key, 'hex'),
-    })
+  async initializeCoreFromKey(key: string) {
+    const core = this._corestore.get({ key: b4a.from(key, 'hex') })
+    await core.ready()
+    this.addCoreToSwarm(core)
+    await core.update()
+
+    return core
   }
 
-  addCoreToSwarm(core) {
+  addCoreToSwarm(core: Hypercore) {
     this._swarm.join(core.discoveryKey)
+  }
+
+  onPeerAppend(peer: Peer) {
+    this._handleAppend(peer.identityBee, peer.entryBee)
   }
 
   async put(key, value) {
@@ -118,26 +126,41 @@ class Vault {
     this._swarm.destroy()
   }
 
-  private storage() {
+  private _storage() {
     return `./temp/${this.name}`
   }
 
   private async _handleAppend(identityBee, entryBee, local = false) {
     const identity = {}
-    for await (const { key, value } of identityBee.createReadStream()) {
-      identity[key] = value
+    if (identityBee) {
+      for await (const { key, value } of identityBee.createReadStream()) {
+        identity[key] = value
+      }
     }
-    const entry = {}
-    for await (const { key, value } of entryBee.createReadStream()) {
-      entry[key] = value
-    }
-    console.log({ identity, entry })
 
-    // this._setStats((stats) => {
-    //   stats[name] = namedDb
-    //   stats.db = this.db
-    //   return stats
-    // })
+    const entry = {}
+    if (entryBee) {
+      for await (const { key, value } of entryBee.createReadStream()) {
+        entry[key] = value
+      }
+    }
+    console.log({ identity, entry, local })
+  }
+
+  private async _beeToKeyValue(bee: Hyperbee) {
+    if (!bee) return {}
+
+    const db = {}
+    if (bee) {
+      for await (const { key, value } of bee.createReadStream()) {
+        db[key] = value
+      }
+    }
+    return db
+  }
+
+  private _updateStats(stats) {
+    this._setStats({})
   }
 
   private _addLog(message) {
