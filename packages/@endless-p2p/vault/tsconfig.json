@@ -11,10 +11,5 @@
     "skipLibCheck": true,
     "noImplicitAny": false
   },
-  "include": ["src/**/*"],
-  "references": [
-    {
-      "path": "../@endless-p2p/vault"
-    }
-  ]
+  "include": ["src/**/*"]
 }

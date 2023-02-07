@@ -1,7 +1,18 @@
 {
   "name": "pearpass",
   "version": "0.1.0",
-  "main": "index.js",
   "license": "MIT",
-  "private": true
+  "packageManager": "yarn@3.4.1",
+  "scripts": {
+    "build:libs": "yarn workspace @endless-p2p/vault build",
+    "start:console": "yarn workspace pearpass-console start",
+    "start:desktop": "yarn workspace pearpass-desktop start",
+    "start:mobile": "yarn workspace pearpass-mobile start"
+  },
+  "workspaces": [
+    "./packages/pearpass-console",
+    "./packages/pearpass-desktop",
+    "./packages/pearpass-mobile",
+    "./packages/@endless-p2p/vault"
+  ]
 }

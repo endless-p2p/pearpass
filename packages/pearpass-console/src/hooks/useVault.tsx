@@ -1,5 +1,5 @@
 import React from 'react'
-import Vault from '../vault'
+import Vault from '@endless-p2p/vault'
 
 interface Props {
   children: React.ReactNode

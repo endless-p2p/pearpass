@@ -1,0 +1,14 @@
+{
+  "exclude": ["packages/**/dist/**"],
+  "references": [
+    {
+      "path": "./packages/pearpass-console"
+    },
+    {
+      "path": "./packages/pearpass-desktop"
+    },
+    {
+      "path": "./packages/@endless-p2p/vault"
+    }
+  ]
+}

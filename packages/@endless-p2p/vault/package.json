@@ -1,0 +1,23 @@
+{
+  "name": "@endless-p2p/vault",
+  "version": "0.1.0",
+  "packageManager": "yarn@3.4.1",
+  "license": "MIT",
+  "main": "dist/src",
+  "types": "dist/src",
+  "scripts": {
+    "build": "tsc",
+    "pretest": "yarn build",
+    "test": "yarn pretest && jest"
+  },
+  "devDependencies": {
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "b4a": "^1.6.1",
+    "corestore": "^6.4.3",
+    "hyperbee": "^2.4.2",
+    "hypercore": "^10.7.0",
+    "hyperswarm": "^4.3.7"
+  }
+}

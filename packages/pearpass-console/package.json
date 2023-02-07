@@ -1,13 +1,15 @@
 {
   "name": "pearpass-console",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "packageManager": "yarn@3.4.1",
   "license": "MIT",
   "bin": "dist/cli.js",
   "engines": {
     "node": ">=10"
   },
   "scripts": {
-    "build": "tsc && chmod +x dist/cli.js",
+    "prebuild": "yarn build:libs",
+    "build": "yarn prebuild && tsc && chmod +x dist/cli.js",
     "start": "yarn build && dist/cli.js",
     "pretest": "yarn build",
     "test": "xo && ava"
@@ -16,11 +18,7 @@
     "dist/cli.js"
   ],
   "dependencies": {
-    "b4a": "^1.6.1",
-    "corestore": "^6.4.2",
-    "graceful-goodbye": "^1.2.0",
-    "hyperbee": "^2.4.2",
-    "hyperswarm": "^4.3.7",
+    "@endless-p2p/vault": "0.1.0",
     "ink": "^3.2.0",
     "ink-big-text": "^1.2.0",
     "ink-form": "^1.0.2",
