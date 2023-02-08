@@ -131,19 +131,9 @@ class Vault {
   }
 
   private async _handleAppend(identityBee, entryBee, local = false) {
-    const identity = {}
-    if (identityBee) {
-      for await (const { key, value } of identityBee.createReadStream()) {
-        identity[key] = value
-      }
-    }
+    const identity = this._beeToKeyValue(identityBee)
+    const entry = this._beeToKeyValue(entryBee)
 
-    const entry = {}
-    if (entryBee) {
-      for await (const { key, value } of entryBee.createReadStream()) {
-        entry[key] = value
-      }
-    }
     console.log({ identity, entry, local })
   }
 
