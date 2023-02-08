@@ -2141,6 +2141,7 @@ __metadata:
     hypercore: ^10.7.0
     hyperswarm: ^4.3.7
     jest: ^29.4.2
+    random-access-memory: ^6.1.0
     ts-jest: ^29.0.5
     typescript: ^4.9.5
   languageName: unknown
@@ -24218,6 +24219,17 @@ __metadata:
     fs-native-extensions:
       optional: true
   checksum: e6a6aea1d6df99ce4406a841122ee7bc46a7ce2fd6d07c65a9b7da1c1c4a8975b9c095f086c165710ae49e797102870b98cebda1733cda895898e21b5a0e4b75
+  languageName: node
+  linkType: hard
+
+"random-access-memory@npm:^6.1.0":
+  version: 6.1.0
+  resolution: "random-access-memory@npm:6.1.0"
+  dependencies:
+    b4a: ^1.6.0
+    is-options: ^1.0.2
+    random-access-storage: ^3.0.0
+  checksum: 1b934c8ea662f41ccbfacba6189818665cfd701dab6e1b8d7c6420eb58b8d728ff791f08f2e66da9361a7c6d8cd3efeadceb6b8a14bedd16fbebf8d7b7549fd7
   languageName: node
   linkType: hard
 

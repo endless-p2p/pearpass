@@ -3,7 +3,7 @@ import Corestore from 'corestore'
 import Hypercore from 'hypercore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
-import Vault from './vault'
+import Vault from './Vault'
 
 class Peer {
   private _vault: Vault

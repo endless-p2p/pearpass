@@ -25,6 +25,7 @@ class Vault {
 
   constructor({
     name,
+    storage,
     topic = '5f6101b77326a81705d662ad445f8ea6146ade0a553c31ef8d4d51fff7ca891c',
   }) {
     this.name = name
@@ -36,7 +37,7 @@ class Vault {
     this._log = []
     this._peers = []
 
-    this._corestore = new Corestore(this._storage())
+    this._corestore = new Corestore(storage)
 
     this._swarm = new Hyperswarm()
     this._swarm.on('connection', (connection) => new Peer({ connection, vault: this }))
@@ -124,10 +125,6 @@ class Vault {
 
   shutdown() {
     this._swarm.destroy()
-  }
-
-  private _storage() {
-    return `./temp/${this.name}`
   }
 
   private async _handleAppend(identityBee, entryBee, local = false) {
