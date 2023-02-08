@@ -1,2 +1,2 @@
-import Vault from "./vault";
-export default Vault;
+import Vault from './Vault'
+export default Vault

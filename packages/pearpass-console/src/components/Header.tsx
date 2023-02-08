@@ -20,9 +20,7 @@ const Header = ({ insertMode, name = 'Stranger' }) => {
             <Spacer />
           </Box>
         </Box>
-        <Box flexShrink={1}>
-          <Text color="magenta">{name}</Text>
-        </Box>
+        <Box flexShrink={1}>{/* <Text color="magenta">{name}</Text> */}</Box>
       </Box>
     </Box>
   )

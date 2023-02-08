@@ -131,20 +131,7 @@ class Vault {
   }
 
   private async _handleAppend(identityBee, entryBee, local = false) {
-    const identity = {}
-    if (identityBee) {
-      for await (const { key, value } of identityBee.createReadStream()) {
-        identity[key] = value
-      }
-    }
-
-    const entry = {}
-    if (entryBee) {
-      for await (const { key, value } of entryBee.createReadStream()) {
-        entry[key] = value
-      }
-    }
-    console.log({ identity, entry, local })
+    await this._updateStats()
   }
 
   private async _beeToKeyValue(bee: Hyperbee) {
@@ -159,8 +146,19 @@ class Vault {
     return db
   }
 
-  private _updateStats(stats) {
-    this._setStats({})
+  private async _updateStats() {
+    const stats = {
+      identityBee: await this._beeToKeyValue(this._identityBee),
+      entryBee: await this._beeToKeyValue(this._entryBee),
+      peers: await Promise.all(
+        this._peers.map(async (peer) => ({
+          identityBee: await this._beeToKeyValue(peer.identityBee),
+          entryBee: await this._beeToKeyValue(peer.entryBee),
+        })),
+      ),
+    }
+    if (this._setStats) this._setStats(stats)
+    console.log(stats)
   }
 
   private _addLog(message) {
