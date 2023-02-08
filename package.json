@@ -14,5 +14,14 @@
     "./packages/pearpass-desktop",
     "./packages/pearpass-mobile",
     "./packages/@endless-p2p/vault"
-  ]
+  ],
+  "devDependencies": {
+    "prettier": "^2.8.3"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "all"
+  }
 }

@@ -134,12 +134,6 @@
     "@types/react-dom": "^17",
     "@expo/dev-server": "0.1.120"
   },
-  "prettier": {
-    "printWidth": 100,
-    "semi": false,
-    "singleQuote": false,
-    "trailingComma": "all"
-  },
   "detox": {
     "test-runner": "jest",
     "runnerConfig": "./detox/config.json",

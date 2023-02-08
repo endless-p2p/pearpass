@@ -3,6 +3,7 @@ import Corestore from 'corestore'
 import Hypercore from 'hypercore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
+import Peer from './Peer'
 
 interface Props {
   name: string
@@ -10,18 +11,16 @@ interface Props {
 }
 
 class Vault {
-  public db: Record<string, unknown>
   public name: string
-  public log: string[]
+  private _stats: Record<string, unknown>
+  private _log: string[]
+  private _corestore: Corestore
+  private _identityBee: Hyperbee
+  private _entryBee: Hyperbee
   private _topicBuffer: Uint8Array | Buffer
   private _topicHex: string
-  private _corestore: Hyperbee
   private _swarm: Hyperswarm
-  private _localCore: Hypercore
-  private _localBee: Hyperbee
-  private _remoteConnections: any[]
-  private _remoteCores: Hypercore[]
-  private _remoteBees: Hyperbee[]
+  private _peers: any[]
   private _setStats: React.Dispatch<any>
 
   constructor({
@@ -33,118 +32,140 @@ class Vault {
     this._topicBuffer = b4a.from(topic, 'hex') //generate a topic using crypto.randomBytes(32)
     this._topicHex = topic
 
-    this.db = {}
-    this.log = []
+    this._stats = {}
+    this._log = []
+    this._peers = []
 
-    this._remoteConnections = []
-    this._remoteCores = []
-    this._remoteBees = []
-
-    this._corestore = new Corestore(this.storage())
+    this._corestore = new Corestore(this._storage())
 
     this._swarm = new Hyperswarm()
-    this._swarm.on('connection', (connection) => {
-      this._processNewConnection(connection)
-      return this._corestore.replicate(connection)
-    })
-
-    this._localCore = this._corestore.get({ name })
-  }
-
-  public async initialize({ setStats }) {
-    this._setStats = setStats
-
-    await this._localCore.ready()
-    this.log.push('localCore ready')
+    this._swarm.on('connection', (connection) => new Peer({ connection, vault: this }))
 
     const foundPeers = this._corestore.findingPeers()
     this._swarm.join(this._topicBuffer)
     this._swarm.flush().then(() => foundPeers())
 
-    this._localBee = new Hyperbee(this._localCore, {
+    this._identityBee = new Hyperbee(this._corestore.get({ name: 'identity-core' }), {
       keyEncoding: 'utf-8',
       valueEncoding: 'utf-8',
     })
 
-    this._localCore.on('append', () => {
-      this._processReadStream(this.name, this._localBee.createReadStream())
+    this._entryBee = new Hyperbee(this._corestore.get({ name: 'entry-core' }), {
+      keyEncoding: 'utf-8',
+      valueEncoding: 'utf-8',
+    })
+
+    this._identityBee.core.ready().then(() => {
+      this._addLog('identityBee core ready')
+
+      this.addCoreToSwarm(this._identityBee.core)
+
+      this._identityBee.core.on('append', () => {
+        this._handleAppend(this._identityBee, this._entryBee, true)
+      })
+    })
+
+    this._entryBee.core.ready().then(() => {
+      this._addLog('entryBee core ready')
+
+      this.addCoreToSwarm(this._entryBee.core)
+
+      this._entryBee.core.update().then(() => {
+        console.log('local _entryBee.core.update()')
+      })
+
+      this._entryBee.core.on('append', () => {
+        console.log('local _entryBee appended')
+        this._handleAppend(this._identityBee, this._entryBee, true)
+      })
+
+      const discoveryKey = b4a.toString(this._entryBee.core.key, 'hex')
+      this._identityBee.put('entryCoreDiscoveryKey', discoveryKey)
+      this._identityBee.put('name', this.name)
     })
   }
 
-  private storage() {
+  async initialize({ setStats }) {
+    this._setStats = setStats
+  }
+
+  addPeer(peer: Peer) {
+    this._peers.push(peer)
+    this._corestore.replicate(peer.connection())
+    peer.sendMessage({
+      identityCoreDiscoveryKey: b4a.toString(this._identityBee.core.key, 'hex'),
+    })
+  }
+
+  removePeer(peer: Peer) {
+    this._peers.splice(this._peers.indexOf(peer), 1)
+  }
+
+  async initializeCoreFromKey(key: string) {
+    const core = this._corestore.get({ key: b4a.from(key, 'hex') })
+    await core.ready()
+    this.addCoreToSwarm(core)
+    await core.update()
+
+    return core
+  }
+
+  addCoreToSwarm(core: Hypercore) {
+    this._swarm.join(core.discoveryKey)
+  }
+
+  onPeerAppend(peer: Peer) {
+    this._handleAppend(peer.identityBee, peer.entryBee)
+  }
+
+  async put(key, value) {
+    return this._entryBee.put(key?.trim(), value?.trim())
+  }
+
+  shutdown() {
+    this._swarm.destroy()
+  }
+
+  private _storage() {
     return `./temp/${this.name}`
   }
 
-  private async _processReadStream(name, stream) {
-    const namedDb = {}
-    for await (const { key, value } of stream) {
-      this.db[key] = value
-      namedDb[key] = value
+  private async _handleAppend(identityBee, entryBee, local = false) {
+    const identity = {}
+    if (identityBee) {
+      for await (const { key, value } of identityBee.createReadStream()) {
+        identity[key] = value
+      }
     }
 
-    this._setStats((stats) => {
-      stats[name] = namedDb
-      stats.db = this.db
-      return stats
-    })
-  }
-
-  private _processNewConnection(conn) {
-    console.log('* new connection from:', b4a.toString(conn.remotePublicKey, 'hex'), '*')
-
-    this._remoteConnections.push(conn)
-    conn.once('close', () =>
-      this._remoteConnections.splice(this._remoteConnections.indexOf(conn), 1),
-    )
-    conn.on('data', (data) => {
-      this._processConnectionMessage(data)
-    })
-
-    // send local hypercore discovery key
-    conn.write(JSON.stringify({ remoteHypercoreKey: b4a.toString(this._localCore.key, 'hex') }))
-  }
-
-  private async _processConnectionMessage(data) {
-    // TODO: authorize peer here
-
-    if (!this._isJsonString(data)) return
-    let json = JSON.parse(data)
-    if (!json.remoteHypercoreKey) return
-
-    let remoteHypercore = this._corestore.get({ key: b4a.from(json.remoteHypercoreKey, 'hex') })
-    await remoteHypercore.ready()
-
-    this._swarm.join(remoteHypercore.discoveryKey)
-    await remoteHypercore.update()
-
-    const remoteHyperbee = new Hyperbee(remoteHypercore, {
-      keyEncoding: 'utf-8',
-      valueEncoding: 'utf-8',
-    })
-
-    this._remoteCores.push(remoteHypercore)
-    this._remoteBees.push(remoteHyperbee)
-
-    remoteHypercore.on('append', () => {
-      this._processReadStream('remote', remoteHyperbee.createReadStream())
-    })
-  }
-
-  private _isJsonString(str) {
-    try {
-      JSON.parse(str)
-    } catch (e) {
-      return false
+    const entry = {}
+    if (entryBee) {
+      for await (const { key, value } of entryBee.createReadStream()) {
+        entry[key] = value
+      }
     }
-    return true
+    console.log({ identity, entry, local })
   }
 
-  public async put(key, value) {
-    return this._localBee.put(key?.trim(), value?.trim())
+  private async _beeToKeyValue(bee: Hyperbee) {
+    if (!bee) return {}
+
+    const db = {}
+    if (bee) {
+      for await (const { key, value } of bee.createReadStream()) {
+        db[key] = value
+      }
+    }
+    return db
   }
 
-  public shutdown() {
-    this._swarm.destroy()
+  private _updateStats(stats) {
+    this._setStats({})
+  }
+
+  private _addLog(message) {
+    console.log(message)
+    this._log.push(message)
   }
 }
 
