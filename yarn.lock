@@ -22052,7 +22052,7 @@ __metadata:
     typescript: ^4.9.5
     xo: ^0.39.1
   bin:
-    pearpass-console: dist/cli.js
+    pearpass-console: dist/src/cli.js
   languageName: unknown
   linkType: soft
 
