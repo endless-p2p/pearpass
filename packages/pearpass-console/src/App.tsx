@@ -5,6 +5,7 @@ import Header from './components/Header'
 import useGlobalCommands from './hooks/useGlobalCommands'
 import { useVault } from './hooks/useVault'
 import EntryForm from './components/EntryForm'
+import Peer from './components/Peer'
 
 const App = ({ name = 'Stranger' }) => {
   const [insertMode, setInsertMode] = React.useState(false)
@@ -22,23 +23,9 @@ const App = ({ name = 'Stranger' }) => {
           </Box>
           <Text>{JSON.stringify(stats)}</Text>
         </Box>
-        <Box flexDirection="column" borderStyle="round" width={50} height={20} paddingX={1}>
-          <Box>
-            <Box width={20}>
-              <Text color="greenBright">local hyperbee:</Text>
-            </Box>
-            <Box>
-              <Text>v{stats?.localBeeVersion}</Text>
-            </Box>
-          </Box>
-          <Box>
-            <Box width={20}>
-              <Text color="greenBright">remote hyperbee:</Text>
-            </Box>
-            <Box>
-              <Text>v{stats?.remoteBeeVersion}</Text>
-            </Box>
-          </Box>
+        <Box flexDirection="column" width="50%">
+          <Peer peerData={stats} />
+          <Peer peerData={stats.peers?.[0]} />
         </Box>
       </Box>
     </>
