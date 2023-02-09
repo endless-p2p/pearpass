@@ -15,8 +15,8 @@ class Vault {
   private _stats: Record<string, unknown>
   private _log: string[]
   private _corestore: Corestore
-  private _identityBee: Hyperbee
-  private _entryBee: Hyperbee
+  public _identityBee: Hyperbee
+  public _entryBee: Hyperbee
   private _topicBuffer: Uint8Array | Buffer
   private _topicHex: string
   private _swarm: Hyperswarm
