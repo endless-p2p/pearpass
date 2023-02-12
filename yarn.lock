@@ -2137,6 +2137,7 @@ __metadata:
     "@types/jest": ^29.4.0
     b4a: ^1.6.1
     corestore: ^6.4.3
+    crypto: ^1.0.1
     hyperbee: ^2.4.2
     hypercore: ^10.7.0
     hyperswarm: ^4.3.7
@@ -10161,6 +10162,13 @@ __metadata:
   version: 1.0.1
   resolution: "crypto-token@npm:1.0.1"
   checksum: 2002565f28cb3648f639a9b65e94f4fe435c58a456a5993689284f3713ed06bc253d93dfea07d40b6d6733ce703a850eabeb6198771bb253ddcdae2ee8506c7e
+  languageName: node
+  linkType: hard
+
+"crypto@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "crypto@npm:1.0.1"
+  checksum: 087fe3165bd94c333a49e6ed66a0193911f63eac38a24f379b3001a5fe260a59c413646e53a0f67875ba13902b2686d81dc703cb2c147a4ec727dcdc04e5645e
   languageName: node
   linkType: hard
 
