@@ -1,48 +1,70 @@
 import Vault from './Vault'
 import RAM from 'random-access-memory'
-import { randomBytes } from 'hypercore-crypto'
 import { createHash } from 'crypto'
 import b4a from 'b4a'
 
-const vault = new Vault({
-  name: 'device-name',
-  storage: () => new RAM(),
-  topic: 'topic words to test with',
-})
+jest.setTimeout(50000)
+
+const testTopic = 'topic words to test with'
+const firstVault = createVault('first-device-name', testTopic)
+const secondVault = createVault('second-device-name', testTopic)
 
 beforeAll(async () => {
-  await vault.ready()
+  await firstVault.ready()
+  await secondVault.ready()
 })
 
 afterAll(async () => {
-  await vault.shutdown()
+  await firstVault.shutdown()
+  await secondVault.shutdown()
 })
 
+function createVault(name, topic) {
+  return new Vault({
+    name: name,
+    storage: () => new RAM(),
+    topic: topic,
+  })
+}
+
 test('Vault takes a name', async () => {
-  expect(vault.name).toBe('device-name')
+  expect(firstVault.name).toBe('first-device-name')
 })
 
 test('Vault finds pears based on the hash of a seed phrase (for now)', async () => {
-  expect(vault._topicHex).toBe('3a25bb73f25e3568ae3d03efa4a0f16b20ced144d21b81867b9d168e8b399043')
+  const topicHex = createHash('sha256').update(testTopic).digest('hex')
+  expect(firstVault._topicHex).toBe(topicHex)
 })
 
 test('Vault persists identity data', async () => {
-  const identityBeeName = await vault.identityBee.get('name')
-  const entryBeeDiscoveryKey = b4a.toString(vault.entryBee.core.key, 'hex')
-  const identityBeeEntryBeeDiscoveryKey = await vault.identityBee.get('entryCoreDiscoveryKey')
+  const identityBeeName = await firstVault.identityBee.get('name')
+  const entryBeeDiscoveryKey = b4a.toString(firstVault.entryBee.core.key, 'hex')
+  const identityBeeEntryBeeDiscoveryKey = await firstVault.identityBee.get('entryCoreDiscoveryKey')
 
-  expect(identityBeeName.value).toBe('device-name')
+  expect(identityBeeName.value).toBe('first-device-name')
   expect(identityBeeEntryBeeDiscoveryKey.value).toBe(entryBeeDiscoveryKey)
 })
 
 test('Vault persists entry data', async () => {
-  await vault.put('test', 'value')
-  const testEntry = await vault.get('test')
+  await firstVault.put('test', 'value')
+  const testEntry = await firstVault.get('test')
 
   expect(testEntry).toEqual({ key: 'test', seq: 1, value: 'value' })
 })
 
-// test('Vault can receive remote peer connection', () => {})
+test('Vault can receive remote peer connection', () => {
+  function peerLengthIsOne() {
+    if (firstVault._peers.length != 1) {
+      setTimeout(peerLengthIsOne, 50)
+      return
+    }
+
+    firstVault._peers.length
+  }
+
+  return expect(Promise.resolve(peerLengthIsOne())).resolves.toBe(1)
+  //expect(firstVault._peers.length).toBeGreaterThanOrEqual(1)
+})
 
 // test('Vault can send data to remote peer', () => {})
 

@@ -23,12 +23,12 @@ class Vault {
   readonly _topic: string
   readonly _topicHex: string
   readonly _topicBuffer: Uint8Array | Buffer
+  readonly _peers: any[]
+  readonly _swarm: Hyperswarm
 
   private _stats: Record<string, unknown>
   private _log: string[]
   private _identityReady: boolean = false
-  private _swarm: Hyperswarm
-  private _peers: any[]
   private _setStats: React.Dispatch<any>
 
   constructor({ name, storage, topic }: Props) {
