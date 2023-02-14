@@ -13,6 +13,8 @@ const App = ({ name = 'Stranger' }) => {
 
   useGlobalCommands({ insertMode, setInsertMode })
 
+  const peers = stats.peers?.map((peer, i) => <Peer key={i} peerData={peer} />)
+
   return (
     <>
       <Header insertMode={insertMode} name={name} />
@@ -25,7 +27,7 @@ const App = ({ name = 'Stranger' }) => {
         </Box>
         <Box flexDirection="column" width="50%">
           <Peer peerData={stats} />
-          <Peer peerData={stats.peers?.[0]} />
+          {peers}
         </Box>
       </Box>
     </>

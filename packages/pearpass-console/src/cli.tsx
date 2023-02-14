@@ -34,7 +34,7 @@ const {
   flags: { name, topic },
 } = cli
 
-const vault = new Vault({ name, topic })
+const vault = new Vault({ name, storage: `./temp/${name}`, topic })
 
 const { waitUntilExit } = render(
   <VaultProvider vault={vault}>

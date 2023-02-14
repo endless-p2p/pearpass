@@ -6,9 +6,8 @@
   "main": "dist/src",
   "types": "dist/src",
   "scripts": {
-    "build": "tsc",
-    "pretest": "yarn build",
-    "test": "yarn pretest && jest"
+    "build": "rm -rf ./dist && tsc",
+    "test": "jest"
   },
   "devDependencies": {
     "@types/jest": "^29.4.0",
@@ -19,8 +18,10 @@
   "dependencies": {
     "b4a": "^1.6.1",
     "corestore": "^6.4.3",
+    "crypto": "^1.0.1",
     "hyperbee": "^2.4.2",
     "hypercore": "^10.7.0",
-    "hyperswarm": "^4.3.7"
+    "hyperswarm": "^4.3.7",
+    "random-access-memory": "^6.1.0"
   }
 }

@@ -9,7 +9,9 @@
     "esModuleInterop": true,
     "outDir": "dist",
     "skipLibCheck": true,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"]
+  "exclude": ["src/**/*.test.ts"],
+  "include": ["src/**/*", "test"]
 }

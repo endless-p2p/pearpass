@@ -3,85 +3,92 @@ import Corestore from 'corestore'
 import Hypercore from 'hypercore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
+import { createHash } from 'crypto'
 import Peer from './Peer'
+import { waitUntil } from './util/delay'
 
 interface Props {
   name: string
-  discoveryKey: string
+  storage: string | (() => unknown)
+  topic: string
 }
 
 class Vault {
   public name: string
+
+  readonly corestore: Corestore
+  readonly identityBee: Hyperbee
+  readonly entryBee: Hyperbee
+
+  readonly _topic: string
+  readonly _topicHex: string
+  readonly _topicBuffer: Uint8Array | Buffer
+
   private _stats: Record<string, unknown>
   private _log: string[]
-  private _corestore: Corestore
-  private _identityBee: Hyperbee
-  private _entryBee: Hyperbee
-  private _topicBuffer: Uint8Array | Buffer
-  private _topicHex: string
+  private _identityReady: boolean = false
   private _swarm: Hyperswarm
   private _peers: any[]
   private _setStats: React.Dispatch<any>
 
-  constructor({
-    name,
-    topic = '5f6101b77326a81705d662ad445f8ea6146ade0a553c31ef8d4d51fff7ca891c',
-  }) {
+  constructor({ name, storage, topic }: Props) {
     this.name = name
 
-    this._topicBuffer = b4a.from(topic, 'hex') //generate a topic using crypto.randomBytes(32)
-    this._topicHex = topic
+    this._topic = topic
+    this._topicHex = createHash('sha256').update(this._topic).digest('hex')
+    this._topicBuffer = b4a.from(this._topicHex, 'hex')
 
     this._stats = {}
     this._log = []
     this._peers = []
 
-    this._corestore = new Corestore(this._storage())
+    this.corestore = new Corestore(storage)
 
     this._swarm = new Hyperswarm()
     this._swarm.on('connection', (connection) => new Peer({ connection, vault: this }))
 
-    const foundPeers = this._corestore.findingPeers()
+    const foundPeers = this.corestore.findingPeers()
     this._swarm.join(this._topicBuffer)
     this._swarm.flush().then(() => foundPeers())
 
-    this._identityBee = new Hyperbee(this._corestore.get({ name: 'identity-core' }), {
+    this.identityBee = new Hyperbee(this.corestore.get({ name: 'identity-core' }), {
       keyEncoding: 'utf-8',
       valueEncoding: 'utf-8',
     })
 
-    this._entryBee = new Hyperbee(this._corestore.get({ name: 'entry-core' }), {
+    this.entryBee = new Hyperbee(this.corestore.get({ name: 'entry-core' }), {
       keyEncoding: 'utf-8',
       valueEncoding: 'utf-8',
     })
 
-    this._identityBee.core.ready().then(() => {
+    this.identityBee.core.ready().then(() => {
       this._addLog('identityBee core ready')
 
-      this.addCoreToSwarm(this._identityBee.core)
+      this.addCoreToSwarm(this.identityBee.core)
 
-      this._identityBee.core.on('append', () => {
-        this._handleAppend(this._identityBee, this._entryBee, true)
+      this.identityBee.core.on('append', () => {
+        this._handleAppend(this.identityBee, this.entryBee, true)
       })
     })
 
-    this._entryBee.core.ready().then(() => {
+    this.entryBee.core.ready().then(() => {
       this._addLog('entryBee core ready')
 
-      this.addCoreToSwarm(this._entryBee.core)
+      this.addCoreToSwarm(this.entryBee.core)
 
-      this._entryBee.core.update().then(() => {
-        console.log('local _entryBee.core.update()')
+      this.entryBee.core.update().then(() => {
+        // console.log('local _entryBee.core.update()')
       })
 
-      this._entryBee.core.on('append', () => {
-        console.log('local _entryBee appended')
-        this._handleAppend(this._identityBee, this._entryBee, true)
+      this.entryBee.core.on('append', () => {
+        // console.log('local _entryBee appended')
+        this._handleAppend(this.identityBee, this.entryBee, true)
       })
 
-      const discoveryKey = b4a.toString(this._entryBee.core.key, 'hex')
-      this._identityBee.put('entryCoreDiscoveryKey', discoveryKey)
-      this._identityBee.put('name', this.name)
+      const discoveryKey = b4a.toString(this.entryBee.core.key, 'hex')
+      this.identityBee.put('entryCoreDiscoveryKey', discoveryKey)
+      this.identityBee.put('name', this.name)
+      this._identityReady = true
     })
   }
 
@@ -89,11 +96,20 @@ class Vault {
     this._setStats = setStats
   }
 
+  async ready() {
+    const cores = [...this.corestore.cores.values()]
+    const coresReady = cores.map((core) => core.ready)
+
+    await waitUntil(() => this._identityReady)
+
+    return Promise.all([this.ready, ...coresReady])
+  }
+
   addPeer(peer: Peer) {
     this._peers.push(peer)
-    this._corestore.replicate(peer.connection())
+    this.corestore.replicate(peer.connection())
     peer.sendMessage({
-      identityCoreDiscoveryKey: b4a.toString(this._identityBee.core.key, 'hex'),
+      identityCoreDiscoveryKey: b4a.toString(this.identityBee.core.key, 'hex'),
     })
   }
 
@@ -102,7 +118,7 @@ class Vault {
   }
 
   async initializeCoreFromKey(key: string) {
-    const core = this._corestore.get({ key: b4a.from(key, 'hex') })
+    const core = this.corestore.get({ key: b4a.from(key, 'hex') })
     await core.ready()
     this.addCoreToSwarm(core)
     await core.update()
@@ -118,16 +134,16 @@ class Vault {
     this._handleAppend(peer.identityBee, peer.entryBee)
   }
 
-  async put(key, value) {
-    return this._entryBee.put(key?.trim(), value?.trim())
+  put(key: string, value: string) {
+    return this.entryBee.put(key?.trim(), value?.trim())
+  }
+
+  get(key: string) {
+    return this.entryBee.get(key)
   }
 
   shutdown() {
-    this._swarm.destroy()
-  }
-
-  private _storage() {
-    return `./temp/${this.name}`
+    return this._swarm.destroy()
   }
 
   private async _handleAppend(identityBee, entryBee, local = false) {
@@ -148,8 +164,8 @@ class Vault {
 
   private async _updateStats() {
     const stats = {
-      identityBee: await this._beeToKeyValue(this._identityBee),
-      entryBee: await this._beeToKeyValue(this._entryBee),
+      identityBee: await this._beeToKeyValue(this.identityBee),
+      entryBee: await this._beeToKeyValue(this.entryBee),
       peers: await Promise.all(
         this._peers.map(async (peer) => ({
           identityBee: await this._beeToKeyValue(peer.identityBee),
@@ -158,11 +174,9 @@ class Vault {
       ),
     }
     if (this._setStats) this._setStats(stats)
-    console.log(stats)
   }
 
   private _addLog(message) {
-    console.log(message)
     this._log.push(message)
   }
 }
