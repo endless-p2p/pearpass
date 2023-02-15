@@ -6,10 +6,11 @@ import b4a from 'b4a'
 import Vault from './Vault'
 
 class Peer {
+  readonly _connection
+  public _entryBee: Hyperbee
+
   private _vault: Vault
-  private _connection
   private _identityBee: Hyperbee
-  private _entryBee: Hyperbee
   private _entryCoreDiscoveryKey: string
 
   constructor({ vault, connection }) {
