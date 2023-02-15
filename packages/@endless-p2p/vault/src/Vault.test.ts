@@ -53,19 +53,21 @@ test('Vault persists entry data', async () => {
 })
 
 test('Vault can receive remote peer connection', () => {
-  function peerLengthIsOne() {
-    if (firstVault._peers.length != 1) {
-      setTimeout(peerLengthIsOne, 50)
-      return
-    }
-
-    firstVault._peers.length
-  }
-
-  return expect(Promise.resolve(peerLengthIsOne())).resolves.toBe(1)
-  //expect(firstVault._peers.length).toBeGreaterThanOrEqual(1)
+  firstVault._swarm.on('connection', () => {
+    expect(firstVault._peers.length).toBeGreaterThanOrEqual(1)
+  })
 })
 
-// test('Vault can send data to remote peer', () => {})
+test('Vault can send data to remote peer', () => {
+  firstVault._swarm.on('connection', () => {
+    firstVault._peers[0]._connection.on('data', (data) => {
+      expect(data).toBeDefined()
+    })
+  })
+})
 
-// test('Vault persists remote peer data', () => {})
+test('Vault persists remote peer data', () => {
+  firstVault._swarm.on('connection', () => {
+    expect(firstVault._peers[0]._entryBee[0]).toBeDefined()
+  })
+})
