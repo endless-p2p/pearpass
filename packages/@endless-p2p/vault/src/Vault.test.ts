@@ -14,7 +14,6 @@ let secondVault
 
 beforeAll(async () => {
   testnet = await createTestnet(3)
-
   firstVault = createVault('first-device-name', testTopic)
   secondVault = createVault('second-device-name', testTopic)
 
@@ -37,14 +36,7 @@ function createVault(name, topic) {
   })
 }
 
-// async function onConnection(vault) {
-//   console.log('waiting for remote peer connection...')
-//   return new Promise((resolve) => {
-//     vault._swarm.on('connection', (data) => resolve(data))
-//   })
-// }
-
-test('Vault takes a name', async (ba) => {
+test('Vault takes a name', async () => {
   expect(firstVault.name).toBe('first-device-name')
 })
 
@@ -72,13 +64,3 @@ test('Vault persists entry data', async () => {
 test('Vault can receive remote peer connection', () => {
   expect(firstVault._peers.length).toBeGreaterThanOrEqual(1)
 })
-
-// test('Vault persists remote peer entry', async () => {
-//   await secondVault.put('to firstVault', 'this value')
-//   console.log({ PEER: firstVault._peers[0].entryBee })
-
-//   const peerBee = await firstVault._peers[0].entryBee
-//   const firstVaultPeerBeeValue = await peerBee.get('to firstVault').value
-
-//   expect(firstVaultPeerBeeValue.value).toBe('this value')
-// })
