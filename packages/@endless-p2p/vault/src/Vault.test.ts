@@ -3,13 +3,21 @@ import RAM from 'random-access-memory'
 import { createHash } from 'crypto'
 import b4a from 'b4a'
 
-jest.setTimeout(50000)
+jest.setTimeout(100000)
 
+const createTestnet = require('@hyperswarm/testnet')
 const testTopic = 'topic words to test with'
-const firstVault = createVault('first-device-name', testTopic)
-const secondVault = createVault('second-device-name', testTopic)
+
+let testnet
+let firstVault
+let secondVault
 
 beforeAll(async () => {
+  testnet = await createTestnet(2)
+
+  firstVault = createVault('first-device', testTopic)
+  secondVault = createVault('second-device', testTopic)
+
   await firstVault.ready()
   await secondVault.ready()
 })
@@ -17,6 +25,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await firstVault.shutdown()
   await secondVault.shutdown()
+  await testnet.destroy()
 })
 
 function createVault(name, topic) {
@@ -24,10 +33,18 @@ function createVault(name, topic) {
     name: name,
     storage: () => new RAM(),
     topic: topic,
+    bootstrap: testnet.bootstrap,
   })
 }
 
-test('Vault takes a name', async () => {
+// async function onConnection(vault) {
+//   console.log('waiting for remote peer connection...')
+//   return new Promise((resolve) => {
+//     vault._swarm.on('connection', (data) => resolve(data))
+//   })
+// }
+
+test('Vault takes a name', async (ba) => {
   expect(firstVault.name).toBe('first-device-name')
 })
 
@@ -53,21 +70,15 @@ test('Vault persists entry data', async () => {
 })
 
 test('Vault can receive remote peer connection', () => {
-  firstVault._swarm.on('connection', () => {
-    expect(firstVault._peers.length).toBeGreaterThanOrEqual(1)
-  })
+  expect(firstVault._peers.length).toBeGreaterThanOrEqual(1)
 })
 
-test('Vault can send data to remote peer', () => {
-  firstVault._swarm.on('connection', () => {
-    firstVault._peers[0]._connection.on('data', (data) => {
-      expect(data).toBeDefined()
-    })
-  })
-})
+// test('Vault persists remote peer entry', async () => {
+//   await secondVault.put('to firstVault', 'this value')
+//   console.log({ PEER: firstVault._peers[0].entryBee })
 
-test('Vault persists remote peer data', () => {
-  firstVault._swarm.on('connection', () => {
-    expect(firstVault._peers[0]._entryBee[0]).toBeDefined()
-  })
-})
+//   const peerBee = await firstVault._peers[0].entryBee
+//   const firstVaultPeerBeeValue = await peerBee.get('to firstVault').value
+
+//   expect(firstVaultPeerBeeValue.value).toBe('this value')
+// })

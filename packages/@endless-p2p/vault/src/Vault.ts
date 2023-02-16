@@ -3,7 +3,7 @@ import Corestore from 'corestore'
 import Hypercore from 'hypercore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
-import { createHash } from 'crypto'
+import { createHash, Hash } from 'crypto'
 import Peer from './Peer'
 import { waitUntil } from './util/delay'
 
@@ -11,6 +11,7 @@ interface Props {
   name: string
   storage: string | (() => unknown)
   topic: string
+  bootstrap: Hash[]
 }
 
 class Vault {
@@ -31,7 +32,7 @@ class Vault {
   private _identityReady: boolean = false
   private _setStats: React.Dispatch<any>
 
-  constructor({ name, storage, topic }: Props) {
+  constructor({ name, storage, topic, bootstrap }: Props) {
     this.name = name
 
     this._topic = topic
@@ -44,7 +45,7 @@ class Vault {
 
     this.corestore = new Corestore(storage)
 
-    this._swarm = new Hyperswarm()
+    this._swarm = new Hyperswarm({ bootstrap })
     this._swarm.on('connection', (connection) => new Peer({ connection, vault: this }))
 
     const foundPeers = this.corestore.findingPeers()
