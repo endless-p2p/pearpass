@@ -67,21 +67,53 @@ test('Vault creates remote peer object', async () => {
 })
 
 test('Vault persists remote peer entry data', async () => {
-  await secondVault.put('to first vault', 'value')
+  const testName = expect.getState().currentTestName
+
+  await secondVault.put(testName, 'value')
   await timeout(500) // wait for data replication
 
   const peerEntryBee = firstVault._peers[0].entryBee
-  const peerEntry = await peerEntryBee.get('to first vault')
+  const peerEntry = await peerEntryBee.get(testName)
 
   expect(peerEntry.value).toEqual('value')
 })
 
 test('Vault merges remote peer entry data', async () => {
-  await secondVault.put('merge me', 'value')
+  const testName = expect.getState().currentTestName
+
+  await secondVault.put(testName, 'value')
   await timeout(500) // wait for data replication
 
   await firstVault.mergePeerEntryBees()
 
-  const mergeEntry = await firstVault.get('merge me')
+  const mergeEntry = await firstVault.get(testName)
   expect(mergeEntry.value).toEqual('value')
+})
+
+test('Vault merges latest same entry key after coming back online', async () => {
+  const testName = expect.getState().currentTestName
+
+  // first device creates entry offline
+  firstVault.shutdown()
+  await firstVault.put(testName, 'value day 1')
+
+  // second device create entry later
+  await secondVault.put(testName, 'value day 2')
+
+  // first device goes online
+  const firstVaultAgain = createVault('first-device-name', testTopic)
+  await firstVaultAgain.ready()
+  await timeout(500) // wait for data replication
+
+  await firstVaultAgain.mergePeerEntryBees()
+
+  // first device receives latest entry (from second device)
+  const firstVaultAgainEntry = await firstVaultAgain.get(testName)
+  expect(firstVaultAgainEntry.value).toEqual('value day 2')
+
+  // second device still has latest entry
+  const secondVaultEntry = await firstVaultAgain.get(testName)
+  expect(secondVaultEntry.value).toEqual('value day 2')
+
+  await firstVaultAgain.shutdown()
 })
