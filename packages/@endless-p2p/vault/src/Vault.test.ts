@@ -14,11 +14,13 @@ let secondVault
 
 beforeAll(async () => {
   testnet = await createTestnet(3)
+
   firstVault = createVault('first-device-name', testTopic)
   secondVault = createVault('second-device-name', testTopic)
-
   await firstVault.ready()
   await secondVault.ready()
+
+  await onConnection(firstVault)
 })
 
 afterAll(async () => {
@@ -33,6 +35,13 @@ function createVault(name, topic) {
     storage: () => new RAM(),
     topic: topic,
     bootstrap: testnet.bootstrap,
+  })
+}
+
+function onConnection(vault) {
+  console.log('waiting for remote peer connection...')
+  return new Promise((resolve) => {
+    vault._swarm.on('connection', (c) => resolve(c))
   })
 }
 
