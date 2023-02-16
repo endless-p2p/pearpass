@@ -45,6 +45,7 @@ class Vault {
 
     this.corestore = new Corestore(storage)
 
+    console.log({ bootstrap })
     this._swarm = new Hyperswarm({ bootstrap })
     this._swarm.on('connection', (connection) => new Peer({ connection, vault: this }))
 

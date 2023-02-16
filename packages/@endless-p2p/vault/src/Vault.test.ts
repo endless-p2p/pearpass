@@ -13,10 +13,10 @@ let firstVault
 let secondVault
 
 beforeAll(async () => {
-  testnet = await createTestnet(2)
+  testnet = await createTestnet(3)
 
-  firstVault = createVault('first-device', testTopic)
-  secondVault = createVault('second-device', testTopic)
+  firstVault = createVault('first-device-name', testTopic)
+  secondVault = createVault('second-device-name', testTopic)
 
   await firstVault.ready()
   await secondVault.ready()
