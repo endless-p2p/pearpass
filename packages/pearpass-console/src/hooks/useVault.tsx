@@ -16,6 +16,7 @@ export function VaultProvider({ children, vault }: Props) {
     const initialize = async () => {
       console.log('initializing...')
       await vault.initialize({ setStats })
+      await vault.ready()
       console.log('ready...')
       // intervalId = vault.waitForUpdate(setStats)
     }

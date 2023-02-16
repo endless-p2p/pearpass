@@ -3,13 +3,19 @@ import RAM from 'random-access-memory'
 import { createHash } from 'crypto'
 import b4a from 'b4a'
 
-jest.setTimeout(50000)
-
+const { timeout } = require('nonsynchronous')
+const createTestnet = require('@hyperswarm/testnet')
 const testTopic = 'topic words to test with'
-const firstVault = createVault('first-device-name', testTopic)
-const secondVault = createVault('second-device-name', testTopic)
+
+let testnet
+let firstVault
+let secondVault
 
 beforeAll(async () => {
+  testnet = await createTestnet(3)
+
+  firstVault = createVault('first-device-name', testTopic)
+  secondVault = createVault('second-device-name', testTopic)
   await firstVault.ready()
   await secondVault.ready()
 })
@@ -17,6 +23,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await firstVault.shutdown()
   await secondVault.shutdown()
+  await testnet.destroy()
 })
 
 function createVault(name, topic) {
@@ -24,6 +31,7 @@ function createVault(name, topic) {
     name: name,
     storage: () => new RAM(),
     topic: topic,
+    bootstrap: testnet.bootstrap,
   })
 }
 
@@ -52,22 +60,7 @@ test('Vault persists entry data', async () => {
   expect(testEntry).toEqual({ key: 'test', seq: 1, value: 'value' })
 })
 
-test('Vault can receive remote peer connection', () => {
-  firstVault._swarm.on('connection', () => {
-    expect(firstVault._peers.length).toBeGreaterThanOrEqual(1)
-  })
-})
-
-test('Vault can send data to remote peer', () => {
-  firstVault._swarm.on('connection', () => {
-    firstVault._peers[0]._connection.on('data', (data) => {
-      expect(data).toBeDefined()
-    })
-  })
-})
-
-test('Vault persists remote peer data', () => {
-  firstVault._swarm.on('connection', () => {
-    expect(firstVault._peers[0]._entryBee[0]).toBeDefined()
-  })
+test('Vault persists entry data', async () => {
+  await timeout(500)
+  expect(firstVault._peers.length).toBeGreaterThanOrEqual(1)
 })

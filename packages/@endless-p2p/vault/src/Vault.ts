@@ -3,7 +3,7 @@ import Corestore from 'corestore'
 import Hypercore from 'hypercore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
-import { createHash } from 'crypto'
+import { createHash, Hash } from 'crypto'
 import Peer from './Peer'
 import { waitUntil } from './util/delay'
 
@@ -11,6 +11,7 @@ interface Props {
   name: string
   storage: string | (() => unknown)
   topic: string
+  bootstrap: () => unknown
 }
 
 class Vault {
@@ -31,7 +32,7 @@ class Vault {
   private _identityReady: boolean = false
   private _setStats: React.Dispatch<any>
 
-  constructor({ name, storage, topic }: Props) {
+  constructor({ name, storage, topic, bootstrap }: Props) {
     this.name = name
 
     this._topic = topic
@@ -43,13 +44,8 @@ class Vault {
     this._peers = []
 
     this.corestore = new Corestore(storage)
-
-    this._swarm = new Hyperswarm()
+    this._swarm = new Hyperswarm({ bootstrap })
     this._swarm.on('connection', (connection) => new Peer({ connection, vault: this }))
-
-    const foundPeers = this.corestore.findingPeers()
-    this._swarm.join(this._topicBuffer)
-    this._swarm.flush().then(() => foundPeers())
 
     this.identityBee = new Hyperbee(this.corestore.get({ name: 'identity-core' }), {
       keyEncoding: 'utf-8',
@@ -97,6 +93,12 @@ class Vault {
   }
 
   async ready() {
+    const foundPeers = this.corestore.findingPeers()
+    this._swarm.join(this._topicBuffer)
+    this._swarm.flush().then(() => foundPeers())
+
+    console.log({ firstBootstrap: this._swarm.dht.bootstrapNodes[0] })
+
     const cores = [...this.corestore.cores.values()]
     const coresReady = cores.map((core) => core.ready)
 
