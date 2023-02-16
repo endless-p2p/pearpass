@@ -148,6 +148,22 @@ class Vault {
     return this._swarm.destroy()
   }
 
+  async mergePeerEntryBees() {
+    if (this._peers.length == 0) return
+
+    const cas = (prev, next) => prev.value !== next.value
+    const entryBeeBatch = this.entryBee.batch({ update: false })
+
+    for (const peer of this._peers) {
+      for await (const { key, value } of peer.entryBee.createReadStream()) {
+        let result = await entryBeeBatch.put(key, value, { cas })
+        console.log(`put attempt to ${this.name} ${key}:${value} -> ${result}`)
+      }
+    }
+
+    await entryBeeBatch.flush()
+  }
+
   private async _handleAppend(identityBee, entryBee, local = false) {
     await this._updateStats()
   }

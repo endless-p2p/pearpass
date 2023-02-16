@@ -1,11 +1,13 @@
 import Vault from './Vault'
 import RAM from 'random-access-memory'
+import { timeout } from 'nonsynchronous'
+import createTestnet from '@hyperswarm/testnet'
 import { createHash } from 'crypto'
 import b4a from 'b4a'
 
-const { timeout } = require('nonsynchronous')
-const createTestnet = require('@hyperswarm/testnet')
 const testTopic = 'topic words to test with'
+const topicHex = createHash('sha256').update(testTopic).digest('hex')
+const topicBuffer = b4a.from(topicHex, 'hex')
 
 let testnet
 let firstVault
@@ -39,8 +41,7 @@ test('Vault takes a name', async () => {
   expect(firstVault.name).toBe('first-device-name')
 })
 
-test('Vault finds pears based on the hash of a seed phrase (for now)', async () => {
-  const topicHex = createHash('sha256').update(testTopic).digest('hex')
+test('Vault finds peers based on the hash of a phrase', async () => {
   expect(firstVault._topicHex).toBe(topicHex)
 })
 
@@ -60,7 +61,27 @@ test('Vault persists entry data', async () => {
   expect(testEntry).toEqual({ key: 'test', seq: 1, value: 'value' })
 })
 
-test('Vault persists entry data', async () => {
+test('Vault creates remote peer object', async () => {
   await timeout(500)
-  expect(firstVault._peers.length).toBeGreaterThanOrEqual(1)
+  expect(firstVault._peers.length).toBe(1)
+})
+
+test('Vault persists remote peer entry data', async () => {
+  await secondVault.put('to first vault', 'value')
+  await timeout(500) // wait for data replication
+
+  const peerEntryBee = firstVault._peers[0].entryBee
+  const peerEntry = await peerEntryBee.get('to first vault')
+
+  expect(peerEntry.value).toEqual('value')
+})
+
+test('Vault merges remote peer entry data', async () => {
+  await secondVault.put('merge me', 'value')
+  await timeout(500) // wait for data replication
+
+  await firstVault.mergePeerEntryBees()
+
+  const mergeEntry = await firstVault.get('merge me')
+  expect(mergeEntry.value).toEqual('value')
 })

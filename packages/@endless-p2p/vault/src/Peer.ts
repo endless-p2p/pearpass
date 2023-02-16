@@ -60,12 +60,12 @@ class Peer {
     })
 
     this._identityBee.core.on('append', () => {
-      console.log('got identityCore append 1')
+      //console.log('got identityCore append 1')
       this._vault.onPeerAppend(this)
     })
 
     this._identityBee.core.on('append', () => {
-      console.log('got identityCore append 2')
+      //console.log('got identityCore append 2')
       this._onIdentityCoreAppend()
     })
     this._onIdentityCoreAppend()
