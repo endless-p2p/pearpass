@@ -97,7 +97,7 @@ class Vault {
     this._swarm.join(this._topicBuffer)
     this._swarm.flush().then(() => foundPeers())
 
-    //console.log({ firstBootstrap: this._swarm.dht.bootstrapNodes[0] })
+    console.log({ firstBootstrap: this._swarm.dht.bootstrapNodes[0] })
 
     const cores = [...this.corestore.cores.values()]
     const coresReady = cores.map((core) => core.ready)
