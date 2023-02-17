@@ -94,26 +94,39 @@ test('Vault merges latest same entry key after coming back online', async () => 
   const testName = expect.getState().currentTestName
 
   // first device creates entry offline
-  firstVault.shutdown()
-  await firstVault.put(testName, 'value day 1')
+  const firstVaultOffline = createVault('first-device-name', testTopic)
+  await firstVaultOffline.ready()
+  await firstVaultOffline.shutdown()
+  await firstVaultOffline.put(testName, 'value day 1')
 
   // second device create entry later
   await secondVault.put(testName, 'value day 2')
 
   // first device goes online
-  const firstVaultAgain = createVault('first-device-name', testTopic)
-  await firstVaultAgain.ready()
+  const firstVaultOnline = createVault('first-device-name', testTopic)
+  await firstVaultOnline.ready()
   await timeout(500) // wait for data replication
 
-  await firstVaultAgain.mergePeerEntryBees()
+  await firstVaultOnline.mergePeerEntryBees()
 
   // first device receives latest entry (from second device)
-  const firstVaultAgainEntry = await firstVaultAgain.get(testName)
+  const firstVaultAgainEntry = await firstVaultOnline.get(testName)
   expect(firstVaultAgainEntry.value).toEqual('value day 2')
 
   // second device still has latest entry
-  const secondVaultEntry = await firstVaultAgain.get(testName)
+  const secondVaultEntry = await firstVaultOnline.get(testName)
   expect(secondVaultEntry.value).toEqual('value day 2')
 
-  await firstVaultAgain.shutdown()
+  await firstVaultOnline.shutdown()
 })
+
+// test('Vault merges entry deletion from peer if latest', async () => {
+//   const testName = expect.getState().currentTestName
+
+//   // first device creates entry offline
+//   const firstVaultOffline = createVault('first-device-name', testTopic)
+//   await firstVaultOffline.ready()
+//   await firstVaultOffline.shutdown()
+//   await firstVaultOffline.put(testName, 'value day 1')
+
+// })
