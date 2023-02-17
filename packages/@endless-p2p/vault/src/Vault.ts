@@ -156,7 +156,7 @@ class Vault {
 
     for (const peer of this._peers) {
       for await (const { key, value } of peer.entryBee.createReadStream()) {
-        let result = await entryBeeBatch.put(key, value, { cas })
+        await entryBeeBatch.put(key, value, { cas })
         console.log(`PUT "${key}": "${value}" -> ${this.name}`)
       }
     }

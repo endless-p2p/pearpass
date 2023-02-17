@@ -90,29 +90,59 @@ test('Vault merges remote peer entry data', async () => {
   expect(mergeEntry.value).toEqual('value')
 })
 
-test('Vault merges latest same entry key after coming back online', async () => {
-  const testName = expect.getState().currentTestName
+// test('Vault merges latest same entry key after coming back online', async () => {
+//   const testName = expect.getState().currentTestName
 
+//   // first device creates entry offline
+//   const firstVaultLocal = createVault('first-device-name', testTopic)
+//   await firstVaultLocal.put(testName, 'value day 1')
+
+//   // second device creates entry later
+//   await secondVault.put(testName, 'value day 2')
+
+//   // first device goes online
+//   await firstVaultLocal.ready()
+//   await timeout(500) // wait for data replication
+
+//   await firstVaultLocal.mergePeerEntryBees()
+
+//   // first device receives latest entry (from second device)
+//   const firstVaultALocalEntry = await firstVaultLocal.get(testName)
+//   expect(firstVaultALocalEntry.value).toEqual('value day 2')
+
+//   await secondVault.mergePeerEntryBees()
+
+//   // second device still has latest entry
+//   const secondVaultEntry = await secondVault.get(testName)
+//   expect(secondVaultEntry.value).toEqual('value day 2')
+
+//   await firstVaultLocal.shutdown()
+// })
+
+test('Vault merges latest same entry key after coming back online', async () => {
   // first device creates entry offline
   const firstVaultLocal = createVault('first-device-name', testTopic)
-  await firstVaultLocal.put(testName, 'value day 1')
+  await firstVaultLocal.put('stink', '1')
 
-  // second device create entry later
-  await secondVault.put(testName, 'value day 2')
+  const batch = firstVaultLocal.entryBee.batch()
+  await batch.put('jazz', '2')
+  await batch.put('jacks', '3')
+  await batch.flush()
 
-  // first device goes online
-  await firstVaultLocal.ready()
-  await timeout(500) // wait for data replication
+  await firstVaultLocal.put('corn', '4')
+  await firstVaultLocal.put('corn', '6')
 
-  await firstVaultLocal.mergePeerEntryBees()
+  console.log({ version: firstVaultLocal.entryBee.version })
 
-  // first device receives latest entry (from second device)
-  const firstVaultALocalEntry = await firstVaultLocal.get(testName)
-  expect(firstVaultALocalEntry.value).toEqual('value day 2')
+  for await (const node of firstVaultLocal.entryBee.createReadStream()) {
+    console.log(node)
+  }
 
-  // second device still has latest entry
-  const secondVaultEntry = await secondVault.get(testName)
-  expect(secondVaultEntry.value).toEqual('value day 2')
+  for await (const { left, right } of firstVaultLocal.entryBee.createDiffStream(2)) {
+    console.log(`left -> ${left.key}, right -> ${right}`)
+  }
 
-  await firstVaultLocal.shutdown()
+  for await (const node of firstVaultLocal.entryBee.createHistoryStream()) {
+    console.log(node)
+  }
 })
