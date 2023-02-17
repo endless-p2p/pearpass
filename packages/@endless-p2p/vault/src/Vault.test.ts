@@ -7,7 +7,10 @@ import b4a from 'b4a'
 
 const testTopic = 'topic words to test with'
 const topicHex = createHash('sha256').update(testTopic).digest('hex')
-const topicBuffer = b4a.from(topicHex, 'hex')
+//const topicBuffer = b4a.from(topicHex, 'hex')
+
+const firstVaultName = Math.random().toString()
+const secondVaultName = Math.random().toString()
 
 let testnet
 let firstVault
@@ -16,8 +19,8 @@ let secondVault
 beforeAll(async () => {
   testnet = await createTestnet(3)
 
-  firstVault = createVault('first-device-name', testTopic)
-  secondVault = createVault('second-device-name', testTopic)
+  firstVault = createVault(firstVaultName, testTopic)
+  secondVault = createVault(secondVaultName, testTopic)
   await firstVault.ready()
   await secondVault.ready()
 })
@@ -38,7 +41,7 @@ function createVault(name, topic) {
 }
 
 test('Vault takes a name', async () => {
-  expect(firstVault.name).toBe('first-device-name')
+  expect(firstVault.name).toBe(firstVaultName)
 })
 
 test('Vault finds peers based on the hash of a phrase', async () => {
@@ -50,99 +53,30 @@ test('Vault persists identity data', async () => {
   const entryBeeDiscoveryKey = b4a.toString(firstVault.entryBee.core.key, 'hex')
   const identityBeeEntryBeeDiscoveryKey = await firstVault.identityBee.get('entryCoreDiscoveryKey')
 
-  expect(identityBeeName.value).toBe('first-device-name')
+  expect(identityBeeName.value).toBe(firstVaultName)
   expect(identityBeeEntryBeeDiscoveryKey.value).toBe(entryBeeDiscoveryKey)
 })
 
-test('Vault persists entry data', async () => {
-  await firstVault.put('test', 'value')
-  const testEntry = await firstVault.get('test')
-
-  expect(testEntry).toEqual({ key: 'test', seq: 1, value: 'value' })
-})
-
 test('Vault creates remote peer object', async () => {
-  await timeout(500)
+  await timeout(100)
   expect(firstVault._peers.length).toBe(1)
+  expect(firstVault.autobase.inputs.length).toBe(2)
 })
 
-test('Vault persists remote peer entry data', async () => {
+test('Vault appends entry to autobase', async () => {
   const testName = expect.getState().currentTestName
 
-  await secondVault.put(testName, 'value')
-  await timeout(500) // wait for data replication
-
-  const peerEntryBee = firstVault._peers[0].entryBee
-  const peerEntry = await peerEntryBee.get(testName)
-
-  expect(peerEntry.value).toEqual('value')
+  await firstVault.put(testName, 'value')
+  const testEntry = await firstVault.get(testName)
+  expect(testEntry).toEqual({ key: testName, seq: 1, value: 'value' })
 })
 
 test('Vault merges remote peer entry data', async () => {
   const testName = expect.getState().currentTestName
 
   await secondVault.put(testName, 'value')
-  await timeout(500) // wait for data replication
+  await timeout(100)
 
-  await firstVault.mergePeerEntryBees()
-
-  const mergeEntry = await firstVault.get(testName)
-  expect(mergeEntry.value).toEqual('value')
-})
-
-// test('Vault merges latest same entry key after coming back online', async () => {
-//   const testName = expect.getState().currentTestName
-
-//   // first device creates entry offline
-//   const firstVaultLocal = createVault('first-device-name', testTopic)
-//   await firstVaultLocal.put(testName, 'value day 1')
-
-//   // second device creates entry later
-//   await secondVault.put(testName, 'value day 2')
-
-//   // first device goes online
-//   await firstVaultLocal.ready()
-//   await timeout(500) // wait for data replication
-
-//   await firstVaultLocal.mergePeerEntryBees()
-
-//   // first device receives latest entry (from second device)
-//   const firstVaultALocalEntry = await firstVaultLocal.get(testName)
-//   expect(firstVaultALocalEntry.value).toEqual('value day 2')
-
-//   await secondVault.mergePeerEntryBees()
-
-//   // second device still has latest entry
-//   const secondVaultEntry = await secondVault.get(testName)
-//   expect(secondVaultEntry.value).toEqual('value day 2')
-
-//   await firstVaultLocal.shutdown()
-// })
-
-test('Vault merges latest same entry key after coming back online', async () => {
-  // first device creates entry offline
-  const firstVaultLocal = createVault('first-device-name', testTopic)
-  await firstVaultLocal.put('stink', '1')
-
-  const batch = firstVaultLocal.entryBee.batch()
-  await batch.put('jazz', '2')
-  await batch.put('jacks', '3')
-  await batch.flush()
-
-  await firstVaultLocal.put('corn', '4')
-  await firstVaultLocal.put('corn', '6')
-
-  console.log({ version: firstVaultLocal.entryBee.version })
-
-  for await (const node of firstVaultLocal.entryBee.createReadStream()) {
-    console.log(node)
-  }
-
-  for await (const { left, right } of firstVaultLocal.entryBee.createDiffStream(2)) {
-    console.log(`left -> ${left.key}, right -> ${right}`)
-  }
-
-  for await (const node of firstVaultLocal.entryBee.createHistoryStream()) {
-    console.log(node)
-  }
+  const firstVaultEntry = await firstVault.get(testName)
+  expect(firstVaultEntry.value).toEqual('value')
 })

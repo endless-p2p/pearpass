@@ -87,6 +87,9 @@ class Peer {
       valueEncoding: 'utf-8',
     })
 
+    await this._vault.autobase.addInput(this._entryBee.core)
+    //console.log('added autobase input')
+
     this._entryBee.core.on('append', () => {
       this._vault.onPeerAppend(this)
     })
