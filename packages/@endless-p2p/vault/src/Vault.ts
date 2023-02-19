@@ -6,7 +6,7 @@ import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
 import { createHash, Hash } from 'crypto'
 import Peer from './Peer'
-import { waitUntil } from './util/delay'
+import { until } from './util/delay'
 import Autobee from './autobee-simple.js'
 
 interface Props {
@@ -114,7 +114,7 @@ class Vault {
     const cores = [...this.corestore.cores.values()]
     const coresReady = cores.map((core) => core.ready)
 
-    await waitUntil(() => this._identityReady)
+    await until(() => this._identityReady)
 
     return Promise.all([this.ready, ...coresReady])
   }

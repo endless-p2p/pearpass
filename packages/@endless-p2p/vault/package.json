@@ -24,7 +24,6 @@
     "hyperbee": "^2.4.2",
     "hypercore": "^10.7.0",
     "hyperswarm": "^4.3.7",
-    "nonsynchronous": "^1.2.0",
     "random-access-memory": "^6.1.0"
   }
 }

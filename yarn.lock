@@ -2144,7 +2144,6 @@ __metadata:
     hypercore: ^10.7.0
     hyperswarm: ^4.3.7
     jest: ^29.4.2
-    nonsynchronous: ^1.2.0
     random-access-memory: ^6.1.0
     ts-jest: ^29.0.5
     typescript: ^4.9.5
@@ -12656,13 +12655,6 @@ autobase@hypercore-protocol/autobase:
   languageName: node
   linkType: hard
 
-"events.once@npm:^2.0.2":
-  version: 2.0.2
-  resolution: "events.once@npm:2.0.2"
-  checksum: d4a4c7280e37b24878cf26d0d66220befc5acdf3fff2192264a5dbfcc38480de6a6c385ab69c44be623e851d2cdb74ef5efd65cb027ca7761f8f716306bf30f3
-  languageName: node
-  linkType: hard
-
 "events@npm:^3.0.0, events@npm:^3.2.0, events@npm:^3.3.0":
   version: 3.3.0
   resolution: "events@npm:3.3.0"
@@ -19630,13 +19622,6 @@ autobase@hypercore-protocol/autobase:
   languageName: node
   linkType: hard
 
-"make-promises-safe@npm:^5.0.0":
-  version: 5.1.0
-  resolution: "make-promises-safe@npm:5.1.0"
-  checksum: 6e59ed8c568b422e4d707d171bf7d9a05ef483bad09749ddbab79e059498572b01e3f58baae7ce49d1e748e693823eb633d3875ae86fa5131242683e71ba73fe
-  languageName: node
-  linkType: hard
-
 "makeerror@npm:1.0.12":
   version: 1.0.12
   resolution: "makeerror@npm:1.0.12"
@@ -21574,16 +21559,6 @@ autobase@hypercore-protocol/autobase:
     nanoassert: ^2.0.0
     sodium-universal: ^4.0.0
   checksum: 1ef50d7627a5a762db4279a994ef33b3508cf4843cb2e087607f7fe03bca21c84aa5362589ade6479a02ea5ba0892ae055dd73029d3d806cfa1e798cea593626
-  languageName: node
-  linkType: hard
-
-"nonsynchronous@npm:^1.2.0":
-  version: 1.2.0
-  resolution: "nonsynchronous@npm:1.2.0"
-  dependencies:
-    events.once: ^2.0.2
-    make-promises-safe: ^5.0.0
-  checksum: c828969b86dfa90101935a8cff1b72a4e08a409576bbad4b4066a667397bb253acb61bdfc54a68b84deb010e5f76c2f57973aac5be380717113c01012078d5c3
   languageName: node
   linkType: hard
 
