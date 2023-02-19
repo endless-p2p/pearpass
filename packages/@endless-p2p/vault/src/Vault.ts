@@ -1,11 +1,13 @@
 import Hyperswarm from 'hyperswarm'
 import Corestore from 'corestore'
+import Autobase from 'autobase'
 import Hypercore from 'hypercore'
 import Hyperbee from 'hyperbee'
 import b4a from 'b4a'
 import { createHash, Hash } from 'crypto'
 import Peer from './Peer'
 import { waitUntil } from './util/delay'
+import Autobee from './autobee-simple.js'
 
 interface Props {
   name: string
@@ -18,8 +20,11 @@ class Vault {
   public name: string
 
   readonly corestore: Corestore
+  readonly beeEncoding: any
   readonly identityBee: Hyperbee
   readonly entryBee: Hyperbee
+  readonly autobase: Autobase
+  readonly autobee: Autobee
 
   readonly _topic: string
   readonly _topicHex: string
@@ -47,15 +52,22 @@ class Vault {
     this._swarm = new Hyperswarm({ bootstrap })
     this._swarm.on('connection', (connection) => new Peer({ connection, vault: this }))
 
-    this.identityBee = new Hyperbee(this.corestore.get({ name: 'identity-core' }), {
-      keyEncoding: 'utf-8',
-      valueEncoding: 'utf-8',
+    this.beeEncoding = { keyEncoding: 'utf-8', valueEncoding: 'utf-8' }
+    this.identityBee = new Hyperbee(
+      this.corestore.get({ name: 'identity-core'.concat(this.name) }),
+      this.beeEncoding,
+    )
+    this.entryBee = new Hyperbee(
+      this.corestore.get({ name: 'entry-core'.concat(this.name) }),
+      this.beeEncoding,
+    )
+
+    this.autobase = new Autobase({
+      inputs: [this.entryBee.core],
+      localInput: this.entryBee.core,
     })
 
-    this.entryBee = new Hyperbee(this.corestore.get({ name: 'entry-core' }), {
-      keyEncoding: 'utf-8',
-      valueEncoding: 'utf-8',
-    })
+    this.autobee = new Autobee(this.autobase, this.beeEncoding)
 
     this.identityBee.core.ready().then(() => {
       this._addLog('identityBee core ready')
@@ -115,7 +127,8 @@ class Vault {
     })
   }
 
-  removePeer(peer: Peer) {
+  async removePeer(peer: Peer) {
+    await this.autobase.removeInput(peer.entryBee.core)
     this._peers.splice(this._peers.indexOf(peer), 1)
   }
 
@@ -137,31 +150,16 @@ class Vault {
   }
 
   put(key: string, value: string) {
-    return this.entryBee.put(key?.trim(), value?.trim())
+    // append to the autobase
+    return this.autobee.put(key?.trim(), value?.trim())
   }
 
   get(key: string) {
-    return this.entryBee.get(key)
+    return this.autobee.get(key)
   }
 
   shutdown() {
     return this._swarm.destroy()
-  }
-
-  async mergePeerEntryBees() {
-    if (this._peers.length == 0) return
-
-    const cas = (prev, next) => prev.value !== next.value
-    const entryBeeBatch = this.entryBee.batch({ update: false })
-
-    for (const peer of this._peers) {
-      for await (const { key, value } of peer.entryBee.createReadStream()) {
-        let result = await entryBeeBatch.put(key, value, { cas })
-        console.log(`put attempt to ${this.name} ${key}:${value} -> ${result}`)
-      }
-    }
-
-    await entryBeeBatch.flush()
   }
 
   private async _handleAppend(identityBee, entryBee, local = false) {

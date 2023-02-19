@@ -7,7 +7,10 @@ import b4a from 'b4a'
 
 const testTopic = 'topic words to test with'
 const topicHex = createHash('sha256').update(testTopic).digest('hex')
-const topicBuffer = b4a.from(topicHex, 'hex')
+//const topicBuffer = b4a.from(topicHex, 'hex')
+
+const firstVaultName = Math.random().toString()
+const secondVaultName = Math.random().toString()
 
 let testnet
 let firstVault
@@ -16,8 +19,8 @@ let secondVault
 beforeAll(async () => {
   testnet = await createTestnet(3)
 
-  firstVault = createVault('first-device-name', testTopic)
-  secondVault = createVault('second-device-name', testTopic)
+  firstVault = createVault(firstVaultName, testTopic)
+  secondVault = createVault(secondVaultName, testTopic)
   await firstVault.ready()
   await secondVault.ready()
 })
@@ -38,7 +41,7 @@ function createVault(name, topic) {
 }
 
 test('Vault takes a name', async () => {
-  expect(firstVault.name).toBe('first-device-name')
+  expect(firstVault.name).toBe(firstVaultName)
 })
 
 test('Vault finds peers based on the hash of a phrase', async () => {
@@ -50,38 +53,30 @@ test('Vault persists identity data', async () => {
   const entryBeeDiscoveryKey = b4a.toString(firstVault.entryBee.core.key, 'hex')
   const identityBeeEntryBeeDiscoveryKey = await firstVault.identityBee.get('entryCoreDiscoveryKey')
 
-  expect(identityBeeName.value).toBe('first-device-name')
+  expect(identityBeeName.value).toBe(firstVaultName)
   expect(identityBeeEntryBeeDiscoveryKey.value).toBe(entryBeeDiscoveryKey)
 })
 
-test('Vault persists entry data', async () => {
-  await firstVault.put('test', 'value')
-  const testEntry = await firstVault.get('test')
-
-  expect(testEntry).toEqual({ key: 'test', seq: 1, value: 'value' })
-})
-
 test('Vault creates remote peer object', async () => {
-  await timeout(500)
+  await timeout(100)
   expect(firstVault._peers.length).toBe(1)
+  expect(firstVault.autobase.inputs.length).toBe(2)
 })
 
-test('Vault persists remote peer entry data', async () => {
-  await secondVault.put('to first vault', 'value')
-  await timeout(500) // wait for data replication
+test('Vault appends entry to autobase', async () => {
+  const testName = expect.getState().currentTestName
 
-  const peerEntryBee = firstVault._peers[0].entryBee
-  const peerEntry = await peerEntryBee.get('to first vault')
-
-  expect(peerEntry.value).toEqual('value')
+  await firstVault.put(testName, 'value')
+  const testEntry = await firstVault.get(testName)
+  expect(testEntry).toEqual({ key: testName, seq: 1, value: 'value' })
 })
 
 test('Vault merges remote peer entry data', async () => {
-  await secondVault.put('merge me', 'value')
-  await timeout(500) // wait for data replication
+  const testName = expect.getState().currentTestName
 
-  await firstVault.mergePeerEntryBees()
+  await secondVault.put(testName, 'value')
+  await timeout(100)
 
-  const mergeEntry = await firstVault.get('merge me')
-  expect(mergeEntry.value).toEqual('value')
+  const firstVaultEntry = await firstVault.get(testName)
+  expect(firstVaultEntry.value).toEqual('value')
 })
