@@ -1,12 +1,44 @@
 const test = require('tape')
 const RAM = require('random-access-memory')
 const Hypercore = require('hypercore')
-const Hyperbee = require('hyperbee')
+const Autobase = require('autobase')
 const HyperbeeDeeBee = require('./')
+const Autodeebee = require('./autodeebee')
 const { DB } = HyperbeeDeeBee
 
-function getBee() {
-  return new Hyperbee(new Hypercore(RAM))
+function getBee () {
+  const firstUser = new Hypercore(RAM)
+  const firstOutput = new Hypercore(RAM)
+  const inputs = [firstUser]
+
+  const base1 = new Autobase({
+    inputs,
+    localOutput: firstOutput,
+    localInput: firstUser
+  })
+  return new Autodeebee(base1)
+}
+// eslint-disable-next-line no-unused-vars
+function getBees () {
+  const firstUser = new Hypercore(RAM)
+  const firstOutput = new Hypercore(RAM)
+  const secondUser = new Hypercore(RAM)
+  const secondOutput = new Hypercore(RAM)
+
+  const inputs = [firstUser, secondUser]
+
+  const base1 = new Autobase({
+    inputs,
+    localOutput: firstOutput,
+    localInput: firstUser
+  })
+  const base2 = new Autobase({
+    inputs,
+    localOutput: secondOutput,
+    localInput: secondUser
+  })
+
+  return [new Autodeebee(base1), new Autodeebee(base2)]
 }
 
 test('Create a document in a collection', async (t) => {
@@ -74,7 +106,64 @@ test('Iterate through all docs in a db', async (t) => {
     await db.close()
   }
 })
+test('Iterate through different collections', async (t) => {
+  const db = new DB(getBee())
 
+  try {
+    await db.collection('example').insert({ example: 'Hello' })
+    await db.collection('example').insert({ example: 'World' })
+
+    const doc1 = await db.collection('patras').insert({ example: 'Hello' })
+    const doc2 = await db.collection('patras').insert({ example: 'World' })
+
+    const docs = await db.collection('patras').find()
+
+    t.equal(docs.length, 2, 'Found both docs')
+
+    let isFirst = true
+    for await (const doc of db.collection('patras').find()) {
+      if (isFirst) {
+        t.ok(doc._id.equals(doc1._id), 'Got same id when iterating (1)')
+        isFirst = false
+      } else {
+        t.ok(doc._id.equals(doc2._id), 'Got same id when iterating (2)')
+      }
+    }
+
+    t.end()
+  } finally {
+    await db.close()
+  }
+})
+
+test('Iterate through different collections of different base', async (t) => {
+  const [base1, base2] = getBees()
+  const db = new DB(base1)
+  const db2 = new DB(base2)
+
+  try {
+    const doc1 = await db.collection('patras').insert({ example: 'Hello' })
+    const doc2 = await db.collection('patras').insert({ example: 'World' })
+
+    const docs = await db2.collection('patras').find()
+
+    t.equal(docs.length, 2, 'Found both docs')
+
+    let isFirst = true
+    for await (const doc of db2.collection('patras').find()) {
+      if (isFirst) {
+        t.ok(doc._id.equals(doc1._id), 'Got same id when iterating (1)')
+        isFirst = false
+      } else {
+        t.ok(doc._id.equals(doc2._id), 'Got same id when iterating (2)')
+      }
+    }
+
+    t.end()
+  } finally {
+    await db.close()
+  }
+})
 test('Limit and Skip', async (t) => {
   const db = new DB(getBee())
   const NUM_TO_MAKE = 30
@@ -105,7 +194,9 @@ test('Search by field equal', async (t) => {
 
   try {
     const doc1 = await db.collection('example').insert({ example: 'Hello' })
-    const doc2 = await db.collection('example').insert({ example: ['Hello', 'World'] })
+    const doc2 = await db
+      .collection('example')
+      .insert({ example: ['Hello', 'World'] })
     await db.collection('example').insert({ example: 'World' })
 
     const found = await db.collection('example').find({ example: 'Hello' })
@@ -132,27 +223,35 @@ test('Search by number fields', async (t) => {
     const found1 = await db.collection('example').find({
       example: {
         $gte: 10,
-        $lte: 20,
-      },
+        $lte: 20
+      }
     })
 
     t.equal(found1.length, 1, 'Found 1 document >= 10 and <= 20')
 
     const found2 = await db.collection('example').find({
       example: {
-        $gt: 9000,
-      },
+        $gt: 9000
+      }
     })
 
     t.equal(found2.length, 1, 'Found 1 document > 9000')
 
     const found3 = await db.collection('example').find({
       example: {
-        $lt: 10,
-      },
+        $lt: 10
+      }
     })
 
     t.equal(found3.length, 1, 'Found 1 document < 10')
+
+    const found4 = await db.collection('example').find({
+      example: {
+        $ne: 666
+      }
+    })
+
+    t.equal(found4.length, 3, 'Found 3 document =! 666')
 
     t.end()
   } finally {
@@ -172,8 +271,8 @@ test('Search by date fields', async (t) => {
     const found1 = await db.collection('example').find({
       example: {
         $gte: new Date(2000, 1),
-        $lte: new Date(2000, 6),
-      },
+        $lte: new Date(2000, 6)
+      }
     })
 
     t.equal(found1.length, 2, 'Found 2 document >= Feb and <= July')
@@ -195,16 +294,16 @@ test('Search using $in and $all', async (t) => {
 
     const found1 = await db.collection('example').find({
       example: {
-        $in: [1, 3, 8],
-      },
+        $in: [1, 3, 8]
+      }
     })
 
     t.equal(found1.length, 3, 'Found 3 matching documents')
 
     const found2 = await db.collection('example').find({
       example: {
-        $all: [2, 6, 8],
-      },
+        $all: [2, 6, 8]
+      }
     })
 
     t.equal(found2.length, 1, 'Found 1 matching document')
@@ -223,13 +322,13 @@ test('Search using $exists', async (t) => {
     await db.collection('example').insert({ nothing: 'here' })
 
     const results1 = await db.collection('example').find({
-      example: { $exists: true },
+      example: { $exists: true }
     })
 
     t.equal(results1.length, 1, 'Found document with field')
 
     const results2 = await db.collection('example').find({
-      example: { $exists: false },
+      example: { $exists: false }
     })
 
     t.equal(results2.length, 1, 'Found document without field')
@@ -243,17 +342,29 @@ test('Search using $exists', async (t) => {
 test('Create indexes and list them', async (t) => {
   const db = new DB(getBee())
   try {
-    await db.collection('example').insert({ example: 1, createdAt: new Date() })
+    await db
+      .collection('example')
+      .insert({ example: 1, createdAt: new Date() })
 
     await db.collection('example').createIndex(['createdAt', 'example'])
 
     const indexes = await db.collection('example').listIndexes()
 
     t.equal(indexes.length, 1, 'Got one index')
-    t.deepEqual(indexes[0].fields, ['createdAt', 'example'], 'Index containes expected fields')
-    t.equal(indexes[0].name, ['createdAt', 'example'].join(','), 'Index generated expected name')
+    t.deepEqual(
+      indexes[0].fields,
+      ['createdAt', 'example'],
+      'Index containes expected fields'
+    )
+    t.equal(
+      indexes[0].name,
+      ['createdAt', 'example'].join(','),
+      'Index generated expected name'
+    )
 
-    await db.collection('example').insert({ example: 2, createdAt: new Date() })
+    await db
+      .collection('example')
+      .insert({ example: 2, createdAt: new Date() })
 
     t.ok('Able to insert document with index')
 
@@ -268,9 +379,15 @@ test('Sort by index', async (t) => {
   try {
     await db.collection('example').createIndex(['createdAt'])
 
-    await db.collection('example').insert({ example: 1, createdAt: new Date(1000) })
-    await db.collection('example').insert({ example: 2, createdAt: new Date(2000) })
-    await db.collection('example').insert({ example: 3, createdAt: new Date(3000) })
+    await db
+      .collection('example')
+      .insert({ example: 1, createdAt: new Date(1000) })
+    await db
+      .collection('example')
+      .insert({ example: 2, createdAt: new Date(2000) })
+    await db
+      .collection('example')
+      .insert({ example: 3, createdAt: new Date(3000) })
 
     let counter = 3
     for await (const { example, createdAt } of db
@@ -316,7 +433,12 @@ test('Limit and skip with index sort', async (t) => {
       await db.collection('example').insert({ i })
     }
 
-    const query = db.collection('example').find().skip(10).limit(10).sort('i', -1)
+    const query = db
+      .collection('example')
+      .find()
+      .skip(10)
+      .limit(10)
+      .sort('i', -1)
 
     const index = await query.getIndex()
 
@@ -344,12 +466,18 @@ test('Use $eq for indexes', async (t) => {
     const indexFields = ['color', 'flavor']
     await db.collection('example').createIndex(indexFields)
 
-    await db.collection('example').insert({ example: 1, color: 'red', flavor: 'watermelon' })
-    await db.collection('example').insert({ example: 2, color: 'red', flavor: 'raspberry' })
-    await db.collection('example').insert({ example: 3, color: 'purple', flavor: 'good' })
+    await db
+      .collection('example')
+      .insert({ example: 1, color: 'red', flavor: 'watermelon' })
+    await db
+      .collection('example')
+      .insert({ example: 2, color: 'red', flavor: 'raspberry' })
+    await db
+      .collection('example')
+      .insert({ example: 3, color: 'purple', flavor: 'good' })
 
     const query = db.collection('example').find({
-      color: 'red',
+      color: 'red'
     })
 
     const index = await query.getIndex()
@@ -386,28 +514,32 @@ test('Arrays get flattened for indexes', async (t) => {
 
     await db.collection('example').insert({
       name: 'le ghetti du spa',
-      ingredients: ['noodles', 'corn', 'sauce'],
+      ingredients: ['noodles', 'corn', 'sauce']
     })
     await db.collection('example').insert({
       name: 'cheeseland',
-      ingredients: ['corn', 'cheese', 'sauce'],
+      ingredients: ['corn', 'cheese', 'sauce']
     })
     await db.collection('example').insert({
       name: 'literally corn',
-      ingredients: ['corn'],
+      ingredients: ['corn']
     })
 
     const query = db
       .collection('example')
       .find({
-        ingredients: 'sauce',
+        ingredients: 'sauce'
       })
       .sort('name')
 
     const index = await query.getIndex()
 
     t.ok(index, 'Using an index for the query')
-    t.deepEqual(index?.index?.fields, ['ingredients', 'name'], 'Using the correct index')
+    t.deepEqual(
+      index?.index?.fields,
+      ['ingredients', 'name'],
+      'Using the correct index'
+    )
 
     const results = await query
 
@@ -432,20 +564,20 @@ test('Indexed Search using $exists', async (t) => {
     const hasIndex = await db
       .collection('example')
       .find({
-        example: { $exists: true },
+        example: { $exists: true }
       })
       .getIndex()
 
     t.ok(hasIndex, 'Using index for search')
 
     const results1 = await db.collection('example').find({
-      example: { $exists: true },
+      example: { $exists: true }
     })
 
     t.equal(results1.length, 1, 'Found document with field')
 
     const results2 = await db.collection('example').find({
-      example: { $exists: false },
+      example: { $exists: false }
     })
 
     t.equal(results2.length, 1, 'Found document without field')
@@ -471,8 +603,8 @@ test('Indexed Search by date fields (with sort)', async (t) => {
       .find({
         example: {
           $gte: new Date(2000, 1),
-          $lte: new Date(2000, 6),
-        },
+          $lte: new Date(2000, 6)
+        }
       })
       .sort('example')
 
@@ -497,15 +629,19 @@ test('Indexed Search using $in and $all with numbers', async (t) => {
     await db.collection('example').createIndex(['example'])
 
     // Account for array fields that aren't in the index.
-    await db.collection('example').insert({ example: [1, 3, 5, 7, 9], fake: [] })
-    await db.collection('example').insert({ example: [2, 3, 6, 8, 10], fake: [] })
+    await db
+      .collection('example')
+      .insert({ example: [1, 3, 5, 7, 9], fake: [] })
+    await db
+      .collection('example')
+      .insert({ example: [2, 3, 6, 8, 10], fake: [] })
     await db.collection('example').insert({ example: 1, fake: [] })
     await db.collection('example').insert({ example: 2, fake: [] })
 
     const query1 = db.collection('example').find({
       example: {
-        $in: [1, 3, 8],
-      },
+        $in: [1, 3, 8]
+      }
     })
 
     const index1 = await query1.getIndex()
@@ -518,8 +654,8 @@ test('Indexed Search using $in and $all with numbers', async (t) => {
 
     const query2 = db.collection('example').find({
       example: {
-        $all: [2, 6, 8],
-      },
+        $all: [2, 6, 8]
+      }
     })
 
     const index2 = await query2.getIndex()
@@ -545,14 +681,16 @@ test('Indexed Search using $in and $all with string', async (t) => {
     await db
       .collection('example')
       .insert({ example: ['cats', 'frogs', 'pets', 'spiders', 'furry'] })
-    await db.collection('example').insert({ example: ['dogs', 'frogs', 'companions', 'bats'] })
+    await db
+      .collection('example')
+      .insert({ example: ['dogs', 'frogs', 'companions', 'bats'] })
     await db.collection('example').insert({ example: 'cats' })
     await db.collection('example').insert({ example: 'dogs' })
 
     const query1 = db.collection('example').find({
       example: {
-        $in: ['cats', 'frogs', 'bats'],
-      },
+        $in: ['cats', 'frogs', 'bats']
+      }
     })
 
     const index1 = await query1.getIndex()
@@ -565,8 +703,8 @@ test('Indexed Search using $in and $all with string', async (t) => {
 
     const query2 = db.collection('example').find({
       example: {
-        $all: ['dogs', 'companions', 'bats'],
-      },
+        $all: ['dogs', 'companions', 'bats']
+      }
     })
 
     const index2 = await query2.getIndex()
@@ -589,13 +727,17 @@ test('Indexed text search using sort and $all', async (t) => {
   try {
     await db.collection('example').createIndex(['index', 'example'])
 
-    await db.collection('example').insert({ index: 1, example: ['hello', 'world'] })
-    await db.collection('example').insert({ index: 2, example: ['goodbye', 'world'] })
+    await db
+      .collection('example')
+      .insert({ index: 1, example: ['hello', 'world'] })
+    await db
+      .collection('example')
+      .insert({ index: 2, example: ['goodbye', 'world'] })
 
     const results1 = await db.collection('example').find({
       example: {
-        $all: ['world'],
-      },
+        $all: ['world']
+      }
     })
 
     t.equal(results1.length, 2, 'Matched two documents for $all')
@@ -612,10 +754,18 @@ test('Use hint API to specify the index to use', async (t) => {
     await db.collection('example').createIndex(['example'])
     await db.collection('example').createIndex(['createdAt'])
 
-    await db.collection('example').insert({ example: 'wow', createdAt: new Date() })
-    await db.collection('example').insert({ example: 'here', createdAt: new Date() })
+    await db
+      .collection('example')
+      .insert({ example: 'wow', createdAt: new Date() })
+    await db
+      .collection('example')
+      .insert({ example: 'here', createdAt: new Date() })
 
-    const chosen1 = await db.collection('example').find({}).hint('example').getIndex()
+    const chosen1 = await db
+      .collection('example')
+      .find({})
+      .hint('example')
+      .getIndex()
 
     t.equal(chosen1?.index?.name, 'example', 'Hinted index got used')
 
@@ -660,10 +810,12 @@ test('.delete a document', async (t) => {
     const doc = await collection.insert({
       foo: 'bar',
       goodbye: 'world',
-      something: 'something',
+      something: 'something'
     })
 
-    const { nDeleted } = await collection.delete({ foo: 'bar' })
+    const {
+      nDeleted
+    } = await collection.delete({ foo: 'bar' })
 
     t.equal(nDeleted, 1, 'One match')
 
@@ -677,17 +829,20 @@ test('.delete a document', async (t) => {
     await db.close()
   }
 })
+
 test('Upsert a document', async (t) => {
   const db = new DB(getBee())
 
   try {
-    const { nUpserted, nModified, nMatched } = await db.collection('example').update(
-      {},
-      {
-        hello: 'world',
-      },
-      { upsert: true },
-    )
+    const { nUpserted, nModified, nMatched } = await db
+      .collection('example')
+      .update(
+        {},
+        {
+          hello: 'world'
+        },
+        { upsert: true }
+      )
 
     t.equal(nUpserted, 1, 'Upserted a doc')
     t.equal(nMatched, 0, 'No existing docs matched')
@@ -711,7 +866,7 @@ test('.update with $set, $unset, $rename', async (t) => {
     const doc = await collection.insert({
       foo: 'bar',
       goodbye: 'world',
-      something: 'something',
+      something: 'something'
     })
 
     const { nUpserted, nModified, nMatched } = await collection.update(
@@ -719,17 +874,17 @@ test('.update with $set, $unset, $rename', async (t) => {
       {
         $set: {
           foo: 'bazz',
-          fizz: 'buzz',
+          fizz: 'buzz'
         },
         // Set with raw fields
         hello: 'world',
         $unset: {
-          goodbye: '',
+          goodbye: ''
         },
         $rename: {
-          something: 'whatever',
-        },
-      },
+          something: 'whatever'
+        }
+      }
     )
 
     t.equal(nUpserted, 0, 'No upserts')
@@ -759,7 +914,7 @@ test('.update with $inc, $mult', async (t) => {
 
     const doc = await collection.insert({
       incValue: 4,
-      multValue: 4,
+      multValue: 4
     })
 
     const { nUpserted, nModified, nMatched } = await collection.update(
@@ -767,13 +922,13 @@ test('.update with $inc, $mult', async (t) => {
       {
         $inc: {
           incValue: 20,
-          incSet: 666,
+          incSet: 666
         },
         $mul: {
           multValue: 20,
-          multSet: 666,
-        },
-      },
+          multSet: 666
+        }
+      }
     )
 
     t.equal(nUpserted, 0, 'No upserts')
@@ -805,7 +960,7 @@ test('.update with $push, $addToSet', async (t) => {
       eachSet: ['a', 'b'],
       existingPush: ['a', 'b'],
       duplicatePush: ['a', 'b'],
-      eachPush: ['a', 'b'],
+      eachPush: ['a', 'b']
     })
 
     const { nUpserted, nModified, nMatched } = await collection.update(
@@ -814,14 +969,14 @@ test('.update with $push, $addToSet', async (t) => {
         $addToSet: {
           existingSet: 'c',
           duplicateSet: 'a',
-          eachSet: { $each: ['b', 'c'] },
+          eachSet: { $each: ['b', 'c'] }
         },
         $push: {
           existingPush: 'c',
           duplicatePush: 'a',
-          eachPush: { $each: ['b', 'c'] },
-        },
-      },
+          eachPush: { $each: ['b', 'c'] }
+        }
+      }
     )
 
     t.equal(nUpserted, 0, 'No upserts')
@@ -861,10 +1016,10 @@ test('.update multiple documents', async (t) => {
       {},
       {
         $inc: {
-          value: 1,
-        },
+          value: 1
+        }
       },
-      { multi: true },
+      { multi: true }
     )
 
     t.equal(nUpserted, 0, 'No upserts')
@@ -889,7 +1044,7 @@ test('.update with array of updates', async (t) => {
 
     const { nUpserted, nModified, nMatched } = await collection.update({}, [
       { $inc: { value: 1 } },
-      { $rename: { value: 'something' } },
+      { $rename: { value: 'something' } }
     ])
 
     t.equal(nUpserted, 0, 'No upserts')

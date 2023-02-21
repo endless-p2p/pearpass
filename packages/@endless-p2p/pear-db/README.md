@@ -56,6 +56,28 @@ const killbots = await db.collection('example')
 const eggbert = await db.collection('example').findOne({name: 'Eggbert'})
 ```
 
+### Usage with Autobase
+
+```JavaScript
+  const input = new Hypercore(RAM)
+  const output = new Hypercore(RAM)
+  const inputs = [input]
+
+  const base = new Autobase({
+    inputs,
+    localOutput: firstOutput,
+    localInput: firstUser
+  })
+  const autobee = new Autodeebee(base)
+
+  // Create a new DB
+  const db = new DB(autobee)
+  // You can then use the DB the same way as you did above.
+```
+
+You also need to use the [Autodeebee class](./autodeebee.js):
+This class redefines the functions of Hyperbee to be compatible with the DB.
+
 ## Data Types
 
 HyperbeeDeeBee uses MongoDB's [BSON](https://github.com/mongodb/js-bson) data types for encoding data.

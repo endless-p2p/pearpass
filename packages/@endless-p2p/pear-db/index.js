@@ -1,6 +1,6 @@
 const BSON = require('bson')
 const { ObjectID } = BSON
-const cbor = require('cbor')
+const cbor = require('cbor-sync')
 
 // Version of the indexing algorithm
 // Will be incremented for breaking changes
@@ -20,6 +20,7 @@ const QUERY_TYPES = {
   $all: compareAll,
 
   // Equality
+  $ne: compareNe,
   $eq: compareEq,
   $exists: compareExists,
 }
@@ -58,8 +59,7 @@ class DB {
   }
 
   async close() {
-    console.log({ core: this.bee.bee })
-    return this.bee.core.close()
+    return this.bee.close()
   }
 }
 
@@ -106,7 +106,7 @@ class Collection {
   }
 
   async update(query = {}, update = {}, options = {}) {
-    const { upsert = false, multi = false, hint = null } = options
+    const { upsert = false, multi = false, hint = null, deIndex = true } = options
 
     let nMatched = 0
     let nUpserted = 0
@@ -132,7 +132,9 @@ class Collection {
         // TODO: Cache index subs
         const bee = this.idx.sub(name)
 
-        await this._deIndexDocument(bee, fields, doc)
+        if (deIndex) {
+          await this._deIndexDocument(bee, fields, doc)
+        }
         await this._indexDocument(bee, fields, newDoc)
       }
       nModified++
@@ -142,8 +144,11 @@ class Collection {
       const initialDoc = {}
       for (const queryField of Object.keys(query)) {
         const queryValue = query[queryField]
-        if ('$eq' in queryValue) initialDoc[queryField] = queryValue.$eq
-        else if (!isQueryObject(queryValue)) initialDoc[queryField] = queryValue
+        if (queryValue.typeof === 'object') {
+          if ('$eq' in queryValue) initialDoc[queryField] = queryValue.$eq
+        } else if (!isQueryObject(queryValue)) {
+          initialDoc[queryField] = queryValue
+        }
       }
 
       const newDoc = performUpdate(initialDoc, update)
@@ -156,6 +161,37 @@ class Collection {
       nMatched,
       nUpserted,
       nModified,
+    }
+  }
+
+  async delete(query = {}, options = {}) {
+    const { multi = false, hint = null } = options
+
+    let nDeleted = 0
+
+    let cursor = this.find(query)
+    if (hint) cursor = cursor.hint(hint)
+    if (!multi) cursor = cursor.limit(1)
+
+    const indexes = await this.listIndexes()
+
+    for await (const doc of cursor) {
+      nDeleted++
+
+      const key = doc._id.id
+
+      await this.docs.del(key)
+
+      for (const { fields, name } of indexes) {
+        // TODO: Cache index subs
+        const bee = this.idx.sub(name)
+
+        await this._deIndexDocument(bee, fields, doc)
+      }
+    }
+
+    return {
+      nDeleted,
     }
   }
 
@@ -333,9 +369,13 @@ class Cursor {
       const { fields } = hintIndex
       if (sort) {
         const sortIndex = fields.indexOf(sort.field)
-        if (sortIndex === -1) throw new Error("Hinted Index doesn't match required sort")
+        if (sortIndex === -1) {
+          throw new Error("Hinted Index doesn't match required sort")
+        }
         const consecutive = consecutiveSubset(fields, eqS)
-        if (consecutive !== sortIndex) throw new Error("Hinted index doesn't match required sort")
+        if (consecutive !== sortIndex) {
+          throw new Error("Hinted index doesn't match required sort")
+        }
       }
 
       const prefixFields = fields.slice(0, consecutiveSubset(fields, eqS))
@@ -479,7 +519,7 @@ class Cursor {
         const gt = makeIndexKeyFromQuery(query, prefixFields, index.fields, makeIndexKey)
 
         const opts = {
-          reverse: sort?.direction === -1,
+          reverse: sort && sort.direction === -1,
         }
         if (gt && gt.length) {
           opts.gt = gt
@@ -566,7 +606,9 @@ function queryCompare(docValue, queryValue) {
 
 function compareAll(docValue, queryValue) {
   // TODO: Add query validator function to detect this early.
-  if (!Array.isArray(queryValue)) throw new Error('$all must be set to an array')
+  if (!Array.isArray(queryValue)) {
+    throw new Error('$all must be set to an array')
+  }
   if (Array.isArray(docValue)) {
     return queryValue.every((fromQuery) =>
       docValue.some((fromDoc) => compareEq(fromDoc, fromQuery)),
@@ -578,7 +620,9 @@ function compareAll(docValue, queryValue) {
 
 function compareIn(docValue, queryValue) {
   // TODO: Add query validator function to detect this early.
-  if (!Array.isArray(queryValue)) throw new Error('$in must be set to an array')
+  if (!Array.isArray(queryValue)) {
+    throw new Error('$in must be set to an array')
+  }
   if (Array.isArray(docValue)) {
     return docValue.some((fromDoc) => queryValue.some((fromQuery) => compareEq(fromDoc, fromQuery)))
   } else {
@@ -602,6 +646,10 @@ function compareLte(docValue, queryValue) {
   return ensureComparable(docValue) <= ensureComparable(queryValue)
 }
 
+function compareNe(docValue, queryValue) {
+  return ensureComparable(docValue) !== ensureComparable(queryValue)
+}
+
 function ensureComparable(value) {
   if (value instanceof Date) return value.getTime()
   return value
@@ -610,7 +658,7 @@ function ensureComparable(value) {
 function compareEq(docValue, queryValue) {
   if (Array.isArray(docValue)) {
     return docValue.some((item) => compareEq(item, queryValue))
-  } else if (typeof docValue?.equals === 'function') {
+  } else if (docValue && typeof docValue.equals === 'function') {
     return docValue.equals(queryValue)
   } else {
     return queryValue === docValue
