@@ -13,7 +13,8 @@
     "./packages/pearpass-console",
     "./packages/pearpass-desktop",
     "./packages/pearpass-mobile",
-    "./packages/@endless-p2p/vault"
+    "./packages/@endless-p2p/vault",
+    "./packages/@endless-p2p/pear-db"
   ],
   "devDependencies": {
     "prettier": "^2.8.3"

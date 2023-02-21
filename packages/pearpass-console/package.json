@@ -18,7 +18,7 @@
     "dist/src/cli.js"
   ],
   "dependencies": {
-    "@endless-p2p/vault": "0.1.0",
+    "@endless-p2p/vault": "workspace:~",
     "ink": "^3.2.0",
     "ink-big-text": "^1.2.0",
     "ink-form": "^1.0.2",
