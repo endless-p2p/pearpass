@@ -1,9 +1,10 @@
 import Vault from './Vault'
 import RAM from 'random-access-memory'
-import { timeout } from 'nonsynchronous'
 import createTestnet from '@hyperswarm/testnet'
 import { createHash } from 'crypto'
 import b4a from 'b4a'
+import { forResult, until } from './util/delay'
+import { BeeNode } from './types'
 
 const testTopic = 'topic words to test with'
 const topicHex = createHash('sha256').update(testTopic).digest('hex')
@@ -13,8 +14,8 @@ const firstVaultName = Math.random().toString()
 const secondVaultName = Math.random().toString()
 
 let testnet
-let firstVault
-let secondVault
+let firstVault: Vault
+let secondVault: Vault
 
 beforeAll(async () => {
   testnet = await createTestnet(3)
@@ -58,7 +59,8 @@ test('Vault persists identity data', async () => {
 })
 
 test('Vault creates remote peer object', async () => {
-  await timeout(100)
+  await until(() => firstVault.autobase.inputs.length === 2)
+
   expect(firstVault._peers.length).toBe(1)
   expect(firstVault.autobase.inputs.length).toBe(2)
 })
@@ -68,6 +70,7 @@ test('Vault appends entry to autobase', async () => {
 
   await firstVault.put(testName, 'value')
   const testEntry = await firstVault.get(testName)
+
   expect(testEntry).toEqual({ key: testName, seq: 1, value: 'value' })
 })
 
@@ -75,8 +78,12 @@ test('Vault merges remote peer entry data', async () => {
   const testName = expect.getState().currentTestName
 
   await secondVault.put(testName, 'value')
-  await timeout(100)
 
-  const firstVaultEntry = await firstVault.get(testName)
+  const firstVaultEntry = await forNotNullBeeNode(() => firstVault.get(testName))
+
   expect(firstVaultEntry.value).toEqual('value')
 })
+
+const forNotNullBeeNode = (getNodeFunction: () => Promise<BeeNode>) => {
+  return forResult<BeeNode>(getNodeFunction, (result) => result !== null)
+}
