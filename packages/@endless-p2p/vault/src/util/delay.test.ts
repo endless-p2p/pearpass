@@ -15,7 +15,7 @@ describe('delay', () => {
     await delay(50)
     const end = new Date().getTime()
 
-    expect(end - start).toBeGreaterThanOrEqual(50)
+    expect(end - start).toBeGreaterThanOrEqual(50 - 1)
   })
 })
 

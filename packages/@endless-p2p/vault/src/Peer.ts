@@ -16,7 +16,7 @@ class Peer {
 
     if (!this._authorize()) return null
 
-    console.log('* new connection from:', b4a.toString(connection.remotePublicKey, 'hex'), '*')
+    // console.log('* new connection from:', b4a.toString(connection.remotePublicKey, 'hex'), '*')
 
     this._vault.addPeer(this)
     this._connection.once('close', () => this._vault.removePeer(this))

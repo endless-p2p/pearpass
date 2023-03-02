@@ -16,6 +16,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
+    "@endless-p2p/pear-db": "workspace:~",
     "@hyperswarm/testnet": "^3.1.1",
     "autobase": "hypercore-protocol/autobase",
     "b4a": "^1.6.1",
