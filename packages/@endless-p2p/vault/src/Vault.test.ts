@@ -72,18 +72,14 @@ test('Vault creates remote peer object', async () => {
 test('Vault merges remote peer entry data', async () => {
   const testName = expect.getState().currentTestName
 
-  // await until(() => {
-  //   return vaultA.autobase.inputs.length === 2
-  // })
-
   await vaultA.put(testName, 'value')
+
+  const entryA = await vaultA.get(testName)
+  expect(entryA.value).toEqual('value')
 
   // await until(() => {
   //   return vaultB.autobase.view.core.status.appended > 0
   // })
-
-  const entryA = await vaultA.get(testName)
-  expect(entryA.value).toEqual('value')
 
   const entryB = await vaultB.get(testName)
   expect(entryB.value).toEqual('value')
