@@ -4,7 +4,7 @@ import createTestnet from '@hyperswarm/testnet'
 import { createHash } from 'crypto'
 import * as b4a from 'b4a'
 import { forResult, until } from './util/delay'
-import { BeeNode } from './types'
+//import { BeeNode } from './types'
 
 jest.setTimeout(10000)
 
@@ -69,6 +69,26 @@ test('Vault creates remote peer object', async () => {
   expect(vaultA.autobase.inputs.length).toBe(2)
 })
 
-const forEntry = (getNodeFunction: () => Promise<BeeNode>) => {
-  return forResult<BeeNode>(getNodeFunction, (result) => result !== null)
-}
+test('Vault merges remote peer entry data', async () => {
+  const testName = expect.getState().currentTestName
+
+  // await until(() => {
+  //   return vaultA.autobase.inputs.length === 2
+  // })
+
+  await vaultA.put(testName, 'value')
+
+  // await until(() => {
+  //   return vaultB.autobase.view.core.status.appended > 0
+  // })
+
+  const entryA = await vaultA.get(testName)
+  expect(entryA.value).toEqual('value')
+
+  const entryB = await vaultB.get(testName)
+  expect(entryB.value).toEqual('value')
+})
+
+// const forEntry = (getNodeFunction: () => Promise<BeeNode>) => {
+//   return forResult<BeeNode>(getNodeFunction, (result) => result !== null)
+// }
