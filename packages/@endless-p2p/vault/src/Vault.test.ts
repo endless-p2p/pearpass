@@ -77,9 +77,9 @@ test('Vault merges remote peer entry data', async () => {
   const entryA = await vaultA.get(testName)
   expect(entryA.value).toEqual('value')
 
-  // await until(() => {
-  //   return vaultB.autobase.view.core.status.appended > 0
-  // })
+  await until(() => {
+    return vaultB.entryBee.core.length > 0
+  })
 
   const entryB = await vaultB.get(testName)
   expect(entryB.value).toEqual('value')
