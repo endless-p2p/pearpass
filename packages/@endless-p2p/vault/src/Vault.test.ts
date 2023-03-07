@@ -69,6 +69,25 @@ test('Vault creates remote peer object', async () => {
   expect(vaultA.autobase.inputs.length).toBe(2)
 })
 
+test('Vault merges remote peer entry data', async () => {
+  const testName = expect.getState().currentTestName
+
+  await vaultA.put(testName, 'value')
+
+  const entryA = await vaultA.get(testName)
+  expect(entryA?.value).toEqual('value')
+
+  const entryB = await forEntry(() => vaultB.get(testName))
+  expect(entryB?.value).toEqual('value')
+})
+
+/**
+ * This is a wrapper around `forResult` that specifically awaits
+ * for the result of db.get({ key }) to return with a positive `seq` value
+ *
+ * @param getNodeFunction A function that returns the promise of a type BeeNode
+ * @returns The result that finally has a seq of 0 or above (actual db record)
+ */
 const forEntry = (getNodeFunction: () => Promise<BeeNode>) => {
-  return forResult<BeeNode>(getNodeFunction, (result) => result !== null)
+  return forResult<BeeNode>(getNodeFunction, (result) => result.seq >= 0)
 }

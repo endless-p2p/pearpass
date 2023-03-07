@@ -9,12 +9,13 @@ import Peer from './Peer'
 import { until } from './util/delay'
 import Autobee from './Autobee'
 import { DB } from '@endless-p2p/pear-db'
+import { BeeNode } from './types'
 
 interface Props {
   name: string
   storage: string | (() => unknown)
   topic: string
-  bootstrap: () => unknown
+  bootstrap?: () => unknown
 }
 
 class Vault {
@@ -156,11 +157,13 @@ class Vault {
   }
 
   async get(key: string) {
-    let doc
+    let doc: BeeNode
     try {
       doc = await this.entries.findOne({ key })
     } catch (error) {
-      return null
+      // TODO: Think about pear-db design.  Do we really want it to throw every time it doesn't find anything?
+      // console.log(error)
+      return { seq: -1 } as BeeNode
     }
     return doc
   }

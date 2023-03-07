@@ -2152,7 +2152,7 @@ __metadata:
     "@endless-p2p/pear-db": "workspace:~"
     "@hyperswarm/testnet": ^3.1.1
     "@types/jest": ^29.4.0
-    autobase: hypercore-protocol/autobase
+    autobase: "https://github.com/holepunchto/autobase.git"
     b4a: ^1.6.1
     corestore: ^6.4.3
     crypto: ^1.0.1
@@ -7542,7 +7542,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"autobase@https://github.com/hypercore-protocol/autobase, autobase@hypercore-protocol/autobase":
+"autobase@https://github.com/holepunchto/autobase.git":
+  version: 1.0.0-alpha.8
+  resolution: "autobase@https://github.com/holepunchto/autobase.git#commit=7719d9a87fd191563044cb14468340ce42b6d4c7"
+  dependencies:
+    b4a: ^1.3.1
+    codecs: ^3.0.0
+    compact-encoding: ^2.0.0
+    debounceify: ^1.0.0
+    mutexify: ^1.4.0
+    safety-catch: ^1.0.1
+    streamx: ^2.10.0
+  checksum: 6331adfe22afbde5a971f6e1f3cf20f2f6832d3884ff604cd34f3c3e529dee83caf985fe55673376e24e2272bbae959fdb3f467f6650b87a3acbdc9a4a6a636b
+  languageName: node
+  linkType: hard
+
+"autobase@https://github.com/hypercore-protocol/autobase":
   version: 1.0.0-alpha.8
   resolution: "autobase@https://github.com/hypercore-protocol/autobase.git#commit=7719d9a87fd191563044cb14468340ce42b6d4c7"
   dependencies:

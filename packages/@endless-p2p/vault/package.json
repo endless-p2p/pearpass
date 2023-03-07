@@ -18,7 +18,7 @@
   "dependencies": {
     "@endless-p2p/pear-db": "workspace:~",
     "@hyperswarm/testnet": "^3.1.1",
-    "autobase": "hypercore-protocol/autobase",
+    "autobase": "https://github.com/holepunchto/autobase.git",
     "b4a": "^1.6.1",
     "corestore": "^6.4.3",
     "crypto": "^1.0.1",
